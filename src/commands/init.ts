@@ -42,12 +42,24 @@ async function initCommandInner(): Promise<void> {
     return;
   }
 
+  const detectedServers = new Set<string>();
+  for (const agent of selectedAgents) {
+    try {
+      const existing = await agent.read(projectDir);
+      for (const name of Object.keys(existing)) {
+        detectedServers.add(name);
+      }
+    } catch {
+      // silent fallback per design decision
+    }
+  }
+
   const selectedServers = await checkbox({
     message: "Select servers to deploy:",
     choices: servers.map((s) => ({
-      name: `${s.name} [${s.default.transport}]`,
+      name: `${s.name}${detectedServers.has(s.name) ? " (detected)" : ""} [${s.default.transport}]`,
       value: s,
-      checked: true,
+      checked: detectedServers.has(s.name),
     })),
   });
 
