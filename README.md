@@ -96,4 +96,4 @@ mcpsmgr sync
 
 ## License
 
-ISC
+MIT

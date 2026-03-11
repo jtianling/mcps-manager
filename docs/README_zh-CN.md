@@ -96,4 +96,4 @@ mcpsmgr sync
 
 ## 许可证
 
-ISC
+MIT
