@@ -29,7 +29,7 @@ export async function removeCommand(serverName: string): Promise<void> {
     choices: agentsWithServer.map((adapter) => ({
       name: `${adapter.name}${adapter.isGlobal ? " [global]" : ""}`,
       value: adapter,
-      checked: true,
+      checked: !adapter.isGlobal,
     })),
   });
 

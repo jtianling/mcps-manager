@@ -23,7 +23,7 @@ export async function initCommand(): Promise<void> {
     choices: allAdapters.map((adapter) => ({
       name: `${adapter.name}${detectedIds.has(adapter.id) ? " (detected)" : ""}${adapter.isGlobal ? " [global]" : ""}`,
       value: adapter,
-      checked: detectedIds.has(adapter.id),
+      checked: detectedIds.has(adapter.id) && !adapter.isGlobal,
     })),
   });
 

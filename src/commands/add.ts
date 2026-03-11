@@ -35,7 +35,7 @@ export async function addCommand(serverName: string): Promise<void> {
     choices: detected.map((adapter) => ({
       name: `${adapter.name}${adapter.isGlobal ? " [global]" : ""}`,
       value: adapter,
-      checked: true,
+      checked: !adapter.isGlobal,
     })),
   });
 
