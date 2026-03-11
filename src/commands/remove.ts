@@ -1,8 +1,18 @@
 import { checkbox } from "@inquirer/prompts";
 import { allAdapters } from "../adapters/index.js";
+import { isUserCancellation } from "../utils/prompt.js";
 import type { AgentAdapter } from "../types.js";
 
 export async function removeCommand(serverName: string): Promise<void> {
+  try {
+    await removeCommandInner(serverName);
+  } catch (error) {
+    if (isUserCancellation(error)) return;
+    throw error;
+  }
+}
+
+async function removeCommandInner(serverName: string): Promise<void> {
   const projectDir = process.cwd();
 
   const agentsWithServer: AgentAdapter[] = [];

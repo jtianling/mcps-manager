@@ -2,9 +2,19 @@ import { checkbox } from "@inquirer/prompts";
 import { detectAgents } from "../adapters/index.js";
 import { readServerDefinition, serverExists } from "../utils/server-store.js";
 import { resolveConfig } from "../utils/resolve-config.js";
+import { isUserCancellation } from "../utils/prompt.js";
 import type { AgentAdapter } from "../types.js";
 
 export async function addCommand(serverName: string): Promise<void> {
+  try {
+    await addCommandInner(serverName);
+  } catch (error) {
+    if (isUserCancellation(error)) return;
+    throw error;
+  }
+}
+
+async function addCommandInner(serverName: string): Promise<void> {
   const projectDir = process.cwd();
 
   if (!serverExists(serverName)) {

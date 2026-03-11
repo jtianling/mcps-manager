@@ -4,6 +4,7 @@ import { input, select, confirm } from "@inquirer/prompts";
 import type { GlobalConfig } from "../types.js";
 import { paths } from "../utils/paths.js";
 import { writeGlobalConfig, configExists } from "../utils/config.js";
+import { isUserCancellation } from "../utils/prompt.js";
 
 const GLM_ENDPOINTS = [
   {
@@ -17,6 +18,15 @@ const GLM_ENDPOINTS = [
 ] as const;
 
 export async function setupCommand(): Promise<void> {
+  try {
+    await setupCommandInner();
+  } catch (error) {
+    if (isUserCancellation(error)) return;
+    throw error;
+  }
+}
+
+async function setupCommandInner(): Promise<void> {
   if (configExists()) {
     const overwrite = await confirm({
       message: "Configuration already exists. Overwrite?",

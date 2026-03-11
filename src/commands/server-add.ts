@@ -11,8 +11,18 @@ import {
   analyzeWithGlm,
   type AnalysisResult,
 } from "../services/glm-client.js";
+import { isUserCancellation } from "../utils/prompt.js";
 
 export async function serverAddCommand(source?: string): Promise<void> {
+  try {
+    await serverAddCommandInner(source);
+  } catch (error) {
+    if (isUserCancellation(error)) return;
+    throw error;
+  }
+}
+
+async function serverAddCommandInner(source?: string): Promise<void> {
   const urlInput =
     source ??
     (await input({

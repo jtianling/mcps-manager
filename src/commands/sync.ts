@@ -2,8 +2,18 @@ import { confirm } from "@inquirer/prompts";
 import { allAdapters } from "../adapters/index.js";
 import { listServerDefinitions } from "../utils/server-store.js";
 import { resolveConfig } from "../utils/resolve-config.js";
+import { isUserCancellation } from "../utils/prompt.js";
 
 export async function syncCommand(): Promise<void> {
+  try {
+    await syncCommandInner();
+  } catch (error) {
+    if (isUserCancellation(error)) return;
+    throw error;
+  }
+}
+
+async function syncCommandInner(): Promise<void> {
   const projectDir = process.cwd();
 
   const definitions = await listServerDefinitions();
