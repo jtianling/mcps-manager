@@ -78,7 +78,8 @@ export async function serverAddCommand(source?: string): Promise<void> {
   const env: Record<string, string> = {};
   for (const varName of analysis.requiredEnvVars) {
     const value = await password({
-      message: `Enter value for ${varName}:`,
+      message: `Enter value for ${varName} (stored locally, never sent to servers):`,
+      mask: "*",
     });
     env[varName] = value;
   }
@@ -174,7 +175,8 @@ async function manualAddFlow(): Promise<void> {
     });
     if (envName.trim() === "") break;
     const envValue = await password({
-      message: `Value for ${envName.trim()}:`,
+      message: `Value for ${envName.trim()} (stored locally, never sent to servers):`,
+      mask: "*",
     });
     envPairs[envName.trim()] = envValue;
     addMore = true;

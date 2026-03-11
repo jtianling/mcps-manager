@@ -39,7 +39,7 @@
 #### Scenario: 用户信任分析结果
 
 - **WHEN** GLM5 返回分析结果且用户选择信任
-- **THEN** 系统使用分析结果中的配置, 交互式要求用户输入 requiredEnvVars 中的值 (隐藏输入), 保存到中央仓库
+- **THEN** 系统使用分析结果中的配置, 交互式要求用户输入 requiredEnvVars 中的值 (每次按键以 `*` 显示, 支持粘贴), 提示信息中 SHALL 包含安全说明 "stored locally, never sent to servers", 输入的值不会传递给 GLM5 或其他 LLM, 直接按已生成的配置保存到中央仓库
 
 #### Scenario: 用户不信任分析结果
 
