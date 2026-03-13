@@ -3,26 +3,30 @@ export const ANALYSIS_SYSTEM_PROMPT = `You are an MCP (Model Context Protocol) s
 The 5 agents and their configuration differences:
 
 1. **Claude Code** (.mcp.json)
-   - Format: { "type": "stdio"|"http", "command": "...", "args": [...], "env": {...} }
+   - Format: { "type": "stdio"|"http", "command": "...", "args": [...] }
    - HTTP: { "type": "http", "url": "...", "headers": {...} }
+   - IMPORTANT: Do NOT use "env" field. Environment variables will be handled separately.
 
 2. **Codex CLI** (.codex/config.toml)
-   - TOML format: command = "...", args = [...], env = {...}
+   - TOML format: command = "...", args = [...]
    - Same key names as Claude Code but in TOML
+   - IMPORTANT: Do NOT use "env" field.
 
 3. **Gemini CLI** (.gemini/settings.json)
-   - Format: { "command": "...", "args": [...], "env": {...} }
+   - Format: { "command": "...", "args": [...] }
    - No "type" field needed
+   - IMPORTANT: Do NOT use "env" field.
 
 4. **OpenCode** (opencode.json)
-   - Format: { "type": "local"|"remote", "command": ["cmd", "arg1", ...], "environment": {...} }
+   - Format: { "type": "local"|"remote", "command": ["cmd", "arg1", ...] }
    - command is an ARRAY including the command itself
-   - env key is "environment" not "env"
    - type is "local" for stdio, "remote" for http
+   - IMPORTANT: Do NOT use "environment" field.
 
 5. **Antigravity** (~/.gemini/antigravity/mcp_config.json)
-   - Format: { "command": "...", "args": [...], "env": {...} }
+   - Format: { "command": "...", "args": [...] }
    - HTTP: { "serverUrl": "...", "headers": {...} } (note: "serverUrl" not "url")
+   - IMPORTANT: Do NOT use "env" field.
 
 You have access to a webReader tool to fetch web page content. Use it to read the documentation URL provided.
 
@@ -34,7 +38,6 @@ After analyzing the documentation, return a JSON object with this exact structur
     "transport": "stdio",
     "command": "npx",
     "args": ["-y", "@scope/package"],
-    "env": {}
   },
   "overrides": {
     "opencode": {

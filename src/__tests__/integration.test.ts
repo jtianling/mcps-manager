@@ -83,11 +83,12 @@ describe("E2E: server add -> deploy to agents -> list -> sync -> remove", () => 
     const ocConfig = ocServers["brave-search"] as Record<string, unknown>;
     expect(ocConfig["type"]).toBe("local");
     expect(ocConfig["command"]).toEqual([
+      "env",
+      "BRAVE_API_KEY=test-key-123",
       "npx",
       "-y",
       "@anthropic/mcp-brave-search",
     ]);
-    expect(ocConfig["environment"]).toEqual({ BRAVE_API_KEY: "test-key-123" });
   });
 
   it("respects overrides per agent", async () => {
@@ -139,10 +140,13 @@ describe("E2E: server add -> deploy to agents -> list -> sync -> remove", () => 
 
     const servers = await claudeCodeAdapter.read(tmpDir);
     const config = servers["brave-search"] as Record<string, unknown>;
-    expect(config["args"]).toEqual(["-y", "@anthropic/mcp-brave-search@2.0"]);
-    expect((config["env"] as Record<string, string>)["BRAVE_API_KEY"]).toBe(
-      "new-key-456",
-    );
+    expect(config["command"]).toBe("env");
+    expect(config["args"]).toEqual([
+      "BRAVE_API_KEY=new-key-456",
+      "npx",
+      "-y",
+      "@anthropic/mcp-brave-search@2.0",
+    ]);
   });
 
   it("preserves other content in config files", async () => {

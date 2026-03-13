@@ -1,13 +1,24 @@
 import { join } from "node:path";
 import type { AgentAdapter, DefaultConfig } from "../types.js";
 import { readJsonFile, writeJsonFile } from "./json-file.js";
+import { buildEnvArgs, parseEnvArgs, resolveEnvInArgs } from "./env-args.js";
 
 function toAgentFormat(config: DefaultConfig): Record<string, unknown> {
   if (config.transport === "stdio") {
+    const { resolvedArgs, remainingEnv } = resolveEnvInArgs(
+      config.args,
+      config.env,
+    );
+    const envArgs = buildEnvArgs(remainingEnv);
+    if (envArgs.length > 0) {
+      return {
+        type: "local",
+        command: ["env", ...envArgs, config.command, ...resolvedArgs],
+      };
+    }
     return {
       type: "local",
-      command: [config.command, ...config.args],
-      environment: { ...config.env },
+      command: [config.command, ...resolvedArgs],
     };
   }
   return {
@@ -24,13 +35,26 @@ function fromAgentFormat(
   const type = raw["type"] as string | undefined;
   if (type === "local") {
     const commandArr = raw["command"] as string[];
+    const legacyEnv = raw["environment"] as Record<string, string> | undefined;
+
+    if (legacyEnv && Object.keys(legacyEnv).length > 0) {
+      const [command = "", ...args] = commandArr;
+      return { transport: "stdio", command, args, env: legacyEnv };
+    }
+
+    if (commandArr[0] === "env") {
+      const { env, commandIndex } = parseEnvArgs(commandArr.slice(1));
+      const actualIndex = commandIndex + 1;
+      return {
+        transport: "stdio",
+        command: commandArr[actualIndex] ?? "",
+        args: commandArr.slice(actualIndex + 1),
+        env,
+      };
+    }
+
     const [command = "", ...args] = commandArr;
-    return {
-      transport: "stdio",
-      command,
-      args,
-      env: (raw["environment"] as Record<string, string>) ?? {},
-    };
+    return { transport: "stdio", command, args, env: {} };
   }
   if (type === "remote") {
     return {

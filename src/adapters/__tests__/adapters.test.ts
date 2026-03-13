@@ -15,6 +15,31 @@ const stdioConfig: StdioConfig = {
   env: { BRAVE_API_KEY: "test-key" },
 };
 
+const stdioConfigWithRef: StdioConfig = {
+  transport: "stdio",
+  command: "npx",
+  args: [
+    "-y",
+    "mcp-remote",
+    "https://mcp.example.com/v1",
+    "--header",
+    "Authorization: Bearer ${API_KEY}",
+  ],
+  env: { API_KEY: "sk-test-123" },
+};
+
+const stdioConfigMixed: StdioConfig = {
+  transport: "stdio",
+  command: "npx",
+  args: [
+    "-y",
+    "mcp-remote",
+    "--header",
+    "Authorization: Bearer ${API_KEY}",
+  ],
+  env: { API_KEY: "sk-test-123", DEBUG: "true" },
+};
+
 const httpConfig: HttpConfig = {
   transport: "http",
   url: "https://example.com/mcp",
@@ -37,9 +62,8 @@ describe("Claude Code Adapter", () => {
     const servers = await claudeCodeAdapter.read(tmpDir);
     expect(servers["brave-search"]).toEqual({
       type: "stdio",
-      command: "npx",
-      args: ["-y", "@anthropic/mcp-brave-search"],
-      env: { BRAVE_API_KEY: "test-key" },
+      command: "env",
+      args: ["BRAVE_API_KEY=test-key", "npx", "-y", "@anthropic/mcp-brave-search"],
     });
   });
 
@@ -74,7 +98,21 @@ describe("Claude Code Adapter", () => {
     expect(Object.keys(servers)).toEqual(["first", "second"]);
   });
 
-  it("converts from agent format", () => {
+  it("converts from new agent format (env command)", () => {
+    const result = claudeCodeAdapter.fromAgentFormat("test", {
+      type: "stdio",
+      command: "env",
+      args: ["KEY=val", "npx", "-y", "pkg"],
+    });
+    expect(result).toEqual({
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "pkg"],
+      env: { KEY: "val" },
+    });
+  });
+
+  it("converts from legacy agent format (env field)", () => {
     const result = claudeCodeAdapter.fromAgentFormat("test", {
       type: "stdio",
       command: "npx",
@@ -86,6 +124,39 @@ describe("Claude Code Adapter", () => {
       command: "npx",
       args: ["-y", "pkg"],
       env: { KEY: "val" },
+    });
+  });
+
+  it("substitutes ${VAR} references in args and removes env", async () => {
+    await claudeCodeAdapter.write(tmpDir, "jina", stdioConfigWithRef);
+    const servers = await claudeCodeAdapter.read(tmpDir);
+    expect(servers["jina"]).toEqual({
+      type: "stdio",
+      command: "npx",
+      args: [
+        "-y",
+        "mcp-remote",
+        "https://mcp.example.com/v1",
+        "--header",
+        "Authorization: Bearer sk-test-123",
+      ],
+    });
+  });
+
+  it("substitutes ${VAR} in args and wraps remaining env vars", async () => {
+    await claudeCodeAdapter.write(tmpDir, "mixed", stdioConfigMixed);
+    const servers = await claudeCodeAdapter.read(tmpDir);
+    expect(servers["mixed"]).toEqual({
+      type: "stdio",
+      command: "env",
+      args: [
+        "DEBUG=true",
+        "npx",
+        "-y",
+        "mcp-remote",
+        "--header",
+        "Authorization: Bearer sk-test-123",
+      ],
     });
   });
 });
@@ -123,9 +194,8 @@ describe("Gemini CLI Adapter", () => {
     await geminiCliAdapter.write(tmpDir, "brave-search", stdioConfig);
     const servers = await geminiCliAdapter.read(tmpDir);
     expect(servers["brave-search"]).toEqual({
-      command: "npx",
-      args: ["-y", "@anthropic/mcp-brave-search"],
-      env: { BRAVE_API_KEY: "test-key" },
+      command: "env",
+      args: ["BRAVE_API_KEY=test-key", "npx", "-y", "@anthropic/mcp-brave-search"],
     });
   });
 
@@ -148,8 +218,7 @@ describe("OpenCode Adapter", () => {
     const servers = await opencodeAdapter.read(tmpDir);
     expect(servers["brave-search"]).toEqual({
       type: "local",
-      command: ["npx", "-y", "@anthropic/mcp-brave-search"],
-      environment: { BRAVE_API_KEY: "test-key" },
+      command: ["env", "BRAVE_API_KEY=test-key", "npx", "-y", "@anthropic/mcp-brave-search"],
     });
   });
 
@@ -163,7 +232,20 @@ describe("OpenCode Adapter", () => {
     });
   });
 
-  it("converts from agent format (local)", () => {
+  it("converts from new agent format (env command)", () => {
+    const result = opencodeAdapter.fromAgentFormat("test", {
+      type: "local",
+      command: ["env", "KEY=val", "npx", "-y", "pkg"],
+    });
+    expect(result).toEqual({
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "pkg"],
+      env: { KEY: "val" },
+    });
+  });
+
+  it("converts from legacy agent format (environment field)", () => {
     const result = opencodeAdapter.fromAgentFormat("test", {
       type: "local",
       command: ["npx", "-y", "pkg"],

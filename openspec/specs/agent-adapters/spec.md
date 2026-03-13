@@ -4,6 +4,40 @@
 
 ## Requirements
 
+### Requirement: Adapter output format
+
+All adapters SHALL output MCP server configs WITHOUT the `env`/`environment` field. The adapter SHALL:
+
+1. Substitute `${VAR_NAME}` references in args with actual values from the env block
+2. For remaining env vars (not referenced in args), use the `env` command as a wrapper with `KEY=value` args
+3. Never include `env` or `environment` field in the output
+
+When reading configs back (`fromAgentFormat`), the adapter SHALL handle both the new format (command = "env" with KEY=value args) and the legacy format (separate env/environment field) for backward compatibility.
+
+#### Scenario: Args contain ${VAR} references
+- **WHEN** a stdio config has args containing `${JINA_API_KEY}` and env `{ "JINA_API_KEY": "xxx" }`
+- **THEN** the adapter substitutes `${JINA_API_KEY}` with `xxx` directly in the args, removes the env field, and does NOT use env command wrapper (since no remaining env vars)
+
+#### Scenario: Env vars not referenced in args
+- **WHEN** a stdio config has env vars `{ "BRAVE_API_KEY": "xxx" }` with no `${BRAVE_API_KEY}` in args
+- **THEN** the adapter uses `env` command wrapper: `command: "env"`, args: `["BRAVE_API_KEY=xxx", "npx", ...]`
+
+#### Scenario: Mixed - some referenced, some not
+- **WHEN** a stdio config has `${API_KEY}` in args AND a separate `DEBUG` env var
+- **THEN** `${API_KEY}` is substituted in args, `DEBUG` is passed via env command wrapper
+
+#### Scenario: Write stdio config without env vars
+- **WHEN** a stdio config has empty env vars
+- **THEN** the adapter outputs config with the original command and args, and NO `env`/`environment` field
+
+#### Scenario: Read new format config
+- **WHEN** the adapter reads a config with `command: "env"` and args containing KEY=value entries
+- **THEN** it extracts env vars from the KEY=value args and reconstructs the original command, args, and env
+
+#### Scenario: Read legacy format config (backward compatibility)
+- **WHEN** the adapter reads a config with a separate `env`/`environment` field
+- **THEN** it parses the env vars from that field as before
+
 ### Requirement: Claude Code Adapter
 
 系统 SHALL 提供 Claude Code 的配置适配器, 操作 `.mcp.json` 文件.
@@ -16,7 +50,7 @@
 #### Scenario: 写入新服务
 
 - **WHEN** 向 Claude Code 添加一个 MCP 服务
-- **THEN** adapter 读取 `.mcp.json` (不存在则创建), 在 `mcpServers` 下添加服务条目, 格式为 `{ "type": "<transport>", "command": "<cmd>", "args": [...], "env": {...} }` 或 HTTP 格式 `{ "type": "http", "url": "...", "headers": {...} }`, 保留文件中已有的其他服务条目
+- **THEN** adapter 读取 `.mcp.json` (不存在则创建), 在 `mcpServers` 下添加服务条目, 使用 env command wrapper 格式 (stdio 有 env vars 时) 或 HTTP 格式 `{ "type": "http", "url": "...", "headers": {...} }`, 保留文件中已有的其他服务条目
 
 #### Scenario: 同名冲突
 
@@ -35,7 +69,7 @@
 #### Scenario: 写入新服务
 
 - **WHEN** 向 Codex CLI 添加一个 MCP 服务
-- **THEN** adapter 读取 `.codex/config.toml` (不存在则创建 `.codex/` 目录和文件), 在 `[mcp_servers.<name>]` section 下添加服务配置, 格式为 `command = "...", args = [...], env = {...}`, MUST 保留文件中已有的非 MCP section 和注释
+- **THEN** adapter 读取 `.codex/config.toml` (不存在则创建 `.codex/` 目录和文件), 在 `[mcp_servers.<name>]` section 下添加服务配置, 使用 env command wrapper 格式 (有 env vars 时 command = "env"), MUST 保留文件中已有的非 MCP section 和注释
 
 #### Scenario: 同名冲突
 
@@ -54,7 +88,7 @@
 #### Scenario: 写入新服务
 
 - **WHEN** 向 Gemini CLI 添加一个 MCP 服务
-- **THEN** adapter 读取 `.gemini/settings.json` (不存在则创建 `.gemini/` 目录和文件), 在 `mcpServers` 下添加服务条目, 格式为 `{ "command": "...", "args": [...], "env": {...} }`, 保留文件中已有的其他字段 (如 `mcp`, `theme` 等非 mcpServers 字段)
+- **THEN** adapter 读取 `.gemini/settings.json` (不存在则创建 `.gemini/` 目录和文件), 在 `mcpServers` 下添加服务条目, 使用 env command wrapper 格式, 保留文件中已有的其他字段 (如 `mcp`, `theme` 等非 mcpServers 字段)
 
 #### Scenario: 同名冲突
 
@@ -73,7 +107,7 @@
 #### Scenario: 写入新服务 (stdio)
 
 - **WHEN** 向 OpenCode 添加一个 stdio 类型的 MCP 服务
-- **THEN** adapter 在 `mcp` 下添加服务条目, 格式为 `{ "type": "local", "command": ["<cmd>", "<arg1>", ...], "environment": {...} }`, 注意 `command` MUST 为数组 (包含命令和参数), `env` key MUST 转换为 `environment`
+- **THEN** adapter 在 `mcp` 下添加服务条目, 格式为 `{ "type": "local", "command": ["env", "KEY=val", "<cmd>", ...] }` (有 env vars 时) 或 `{ "type": "local", "command": ["<cmd>", "<arg1>", ...] }` (无 env vars 时), 不使用 `environment` 字段
 
 #### Scenario: 写入新服务 (http)
 
@@ -97,7 +131,7 @@
 #### Scenario: 写入新服务
 
 - **WHEN** 向 Antigravity 添加一个 MCP 服务
-- **THEN** adapter 读取 `~/.gemini/antigravity/mcp_config.json` (不存在则创建目录和文件), 在 `mcpServers` 下添加服务条目, 格式为 `{ "command": "...", "args": [...], "env": {...} }` 或 HTTP 格式 `{ "serverUrl": "...", "headers": {...} }`, 注意 HTTP 时 url key MUST 为 `serverUrl`
+- **THEN** adapter 读取 `~/.gemini/antigravity/mcp_config.json` (不存在则创建目录和文件), 在 `mcpServers` 下添加服务条目, 使用 env command wrapper 格式 或 HTTP 格式 `{ "serverUrl": "...", "headers": {...} }`, 注意 HTTP 时 url key MUST 为 `serverUrl`
 
 #### Scenario: 同名冲突
 

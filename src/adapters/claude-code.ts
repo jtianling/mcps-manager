@@ -1,14 +1,26 @@
 import { join } from "node:path";
 import type { AgentAdapter, DefaultConfig } from "../types.js";
 import { readJsonFile, writeJsonFile } from "./json-file.js";
+import { buildEnvArgs, parseEnvArgs, resolveEnvInArgs } from "./env-args.js";
 
 function toAgentFormat(config: DefaultConfig): Record<string, unknown> {
   if (config.transport === "stdio") {
+    const { resolvedArgs, remainingEnv } = resolveEnvInArgs(
+      config.args,
+      config.env,
+    );
+    const envArgs = buildEnvArgs(remainingEnv);
+    if (envArgs.length > 0) {
+      return {
+        type: "stdio",
+        command: "env",
+        args: [...envArgs, config.command, ...resolvedArgs],
+      };
+    }
     return {
       type: "stdio",
       command: config.command,
-      args: [...config.args],
-      env: { ...config.env },
+      args: resolvedArgs,
     };
   }
   return {
@@ -24,12 +36,25 @@ function fromAgentFormat(
 ): DefaultConfig | undefined {
   const type = raw["type"] as string | undefined;
   if (type === "stdio") {
-    return {
-      transport: "stdio",
-      command: raw["command"] as string,
-      args: (raw["args"] as string[]) ?? [],
-      env: (raw["env"] as Record<string, string>) ?? {},
-    };
+    const command = raw["command"] as string;
+    const rawArgs = (raw["args"] as string[]) ?? [];
+    const legacyEnv = raw["env"] as Record<string, string> | undefined;
+
+    if (legacyEnv && Object.keys(legacyEnv).length > 0) {
+      return { transport: "stdio", command, args: rawArgs, env: legacyEnv };
+    }
+
+    if (command === "env") {
+      const { env, commandIndex } = parseEnvArgs(rawArgs);
+      return {
+        transport: "stdio",
+        command: rawArgs[commandIndex] ?? "",
+        args: rawArgs.slice(commandIndex + 1),
+        env,
+      };
+    }
+
+    return { transport: "stdio", command, args: rawArgs, env: {} };
   }
   if (type === "http") {
     return {
