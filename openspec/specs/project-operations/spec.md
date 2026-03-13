@@ -122,3 +122,17 @@
 
 - **WHEN** 用户在 `mcpsmgr setup` 的任意 prompt 步骤中按 Ctrl-C
 - **THEN** 系统 SHALL 静默退出, 不输出错误堆栈, 不修改任何配置文件, 进程退出码为 0
+
+### Requirement: init 命令中取消勾选已检测服务触发删除
+
+系统 SHALL 在 `mcpsmgr init` 中, 当用户取消勾选已检测到的 MCP 服务时, 将其视为删除意图, 在操作计划中展示并在确认后执行删除.
+
+#### Scenario: 取消勾选已检测服务
+
+- **WHEN** 用户在 `mcpsmgr init` 的服务选择步骤中, 取消勾选一个已被检测到 (标记为 `(detected)`) 的服务
+- **THEN** 系统 SHALL 在操作计划中以 `- <server-name>` 格式展示该服务将被删除, 并在用户确认后, 从对应 agent 配置中移除该服务
+
+#### Scenario: 仅从包含该服务的 agent 中删除
+
+- **WHEN** 用户取消勾选一个已检测服务, 且多个已选 agent 中只有部分包含该服务
+- **THEN** 系统 SHALL 仅从实际包含该服务的 agent 配置中执行删除, 不影响不包含该服务的 agent

@@ -42,11 +42,14 @@ async function initCommandInner(): Promise<void> {
     return;
   }
 
+  const agentServerMap = new Map<string, Set<string>>();
   const detectedServers = new Set<string>();
   for (const agent of selectedAgents) {
     try {
       const existing = await agent.read(projectDir);
-      for (const name of Object.keys(existing)) {
+      const names = new Set(Object.keys(existing));
+      agentServerMap.set(agent.id, names);
+      for (const name of names) {
         detectedServers.add(name);
       }
     } catch {
@@ -63,7 +66,22 @@ async function initCommandInner(): Promise<void> {
     })),
   });
 
-  if (selectedServers.length === 0) {
+  const selectedServerNames = new Set(selectedServers.map((s) => s.name));
+
+  const removals = new Map<string, AgentAdapter[]>();
+  for (const serverName of detectedServers) {
+    if (!selectedServerNames.has(serverName)) {
+      const agents = selectedAgents.filter((a) => {
+        const agentServers = agentServerMap.get(a.id);
+        return agentServers?.has(serverName);
+      });
+      if (agents.length > 0) {
+        removals.set(serverName, agents);
+      }
+    }
+  }
+
+  if (selectedServers.length === 0 && removals.size === 0) {
     console.log("No servers selected.");
     return;
   }
@@ -73,6 +91,11 @@ async function initCommandInner(): Promise<void> {
     console.log(`  ${agent.name}:`);
     for (const server of selectedServers) {
       console.log(`    + ${server.name}`);
+    }
+    for (const [serverName, agents] of removals) {
+      if (agents.some((a) => a.id === agent.id)) {
+        console.log(`    - ${serverName}`);
+      }
     }
   }
 
@@ -91,6 +114,19 @@ async function initCommandInner(): Promise<void> {
       } catch (error) {
         console.warn(
           `  ! ${server.name} -> ${agent.name}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+  }
+
+  for (const [serverName, agents] of removals) {
+    for (const agent of agents) {
+      try {
+        await agent.remove(projectDir, serverName);
+        console.log(`  - ${serverName} <- ${agent.name}`);
+      } catch (error) {
+        console.warn(
+          `  ! ${serverName} <- ${agent.name}: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
     }
