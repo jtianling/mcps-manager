@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { StdioConfig, HttpConfig } from "../../types.js";
 import { claudeCodeAdapter } from "../claude-code.js";
-import { codexCliAdapter } from "../codex-cli.js";
+import { codexAdapter } from "../codex.js";
 import { geminiCliAdapter } from "../gemini-cli.js";
 import { opencodeAdapter } from "../opencode.js";
 
@@ -161,10 +161,10 @@ describe("Claude Code Adapter", () => {
   });
 });
 
-describe("Codex CLI Adapter", () => {
+describe("Codex Adapter", () => {
   it("writes and reads stdio config as TOML", async () => {
-    await codexCliAdapter.write(tmpDir, "brave-search", stdioConfig);
-    const servers = await codexCliAdapter.read(tmpDir);
+    await codexAdapter.write(tmpDir, "brave-search", stdioConfig);
+    const servers = await codexAdapter.read(tmpDir);
     expect(servers["brave-search"]).toBeTruthy();
 
     const raw = await readFile(
@@ -175,16 +175,16 @@ describe("Codex CLI Adapter", () => {
   });
 
   it("throws on conflict", async () => {
-    await codexCliAdapter.write(tmpDir, "brave-search", stdioConfig);
+    await codexAdapter.write(tmpDir, "brave-search", stdioConfig);
     await expect(
-      codexCliAdapter.write(tmpDir, "brave-search", stdioConfig),
+      codexAdapter.write(tmpDir, "brave-search", stdioConfig),
     ).rejects.toThrow("Conflict");
   });
 
   it("removes a server", async () => {
-    await codexCliAdapter.write(tmpDir, "brave-search", stdioConfig);
-    await codexCliAdapter.remove(tmpDir, "brave-search");
-    const has = await codexCliAdapter.has(tmpDir, "brave-search");
+    await codexAdapter.write(tmpDir, "brave-search", stdioConfig);
+    await codexAdapter.remove(tmpDir, "brave-search");
+    const has = await codexAdapter.has(tmpDir, "brave-search");
     expect(has).toBe(false);
   });
 });

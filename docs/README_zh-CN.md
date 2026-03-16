@@ -6,7 +6,7 @@
 
 ## 问题
 
-每个 AI 编程助手 (Claude Code, Codex CLI, Gemini CLI, OpenCode, Antigravity) 都使用各自的配置格式来管理 MCP 服务器.  在多个助手之间管理相同的服务器意味着需要手动编辑多个配置文件, 既繁琐又容易出错.
+每个 AI 编程助手 (Claude Code, Codex, Gemini CLI, OpenCode, Antigravity) 都使用各自的配置格式来管理 MCP 服务器.  在多个助手之间管理相同的服务器意味着需要手动编辑多个配置文件, 既繁琐又容易出错.
 
 ## 解决方案
 
@@ -15,7 +15,7 @@
 ```
 中央仓库                     助手配置
 ┌──────────────────┐   ┌─► Claude Code (.claude.json)
-│  server-a (stdio)│───┼─► Codex CLI   (.codex/config.toml)
+│  server-a (stdio)│───┼─► Codex   (.codex/config.toml)
 │  server-b (http) │   ├─► Gemini CLI  (.gemini/settings.json)
 │  server-c (stdio)│   ├─► OpenCode    (.opencode.json)
 └──────────────────┘   └─► Antigravity (.antigravity/config.json)
@@ -24,7 +24,7 @@
 ## 特性
 
 - **中央服务器仓库** - 在 `~/.mcps-manager/servers/` 中统一定义 MCP 服务器
-- **多助手支持** - Claude Code, Codex CLI, Gemini CLI, OpenCode, Antigravity
+- **多助手支持** - Claude Code, Codex, Gemini CLI, OpenCode, Antigravity
 - **AI 辅助配置** - 提供 URL 或 GitHub 仓库地址, GLM-5 自动分析文档并生成配置
 - **按助手覆盖** - 可针对特定助手自定义服务器配置
 - **项目级初始化** - 将选定的服务器部署到项目中检测到的助手
@@ -81,7 +81,7 @@ mcpsmgr sync
 | 助手 | 配置位置 | 格式 |
 |---|---|---|
 | Claude Code | `.claude.json` (项目级) | JSON |
-| Codex CLI | `.codex/config.toml` (项目级) | TOML |
+| Codex | `.codex/config.toml` (项目级) | TOML |
 | Gemini CLI | `.gemini/settings.json` (全局) | JSON |
 | OpenCode | `.opencode.json` (项目级) | JSON |
 | Antigravity | `.antigravity/config.json` (项目级) | JSON |

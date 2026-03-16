@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import type { AgentAdapter, AgentId } from "../types.js";
 import { claudeCodeAdapter } from "./claude-code.js";
-import { codexCliAdapter } from "./codex-cli.js";
+import { codexAdapter } from "./codex.js";
 import { geminiCliAdapter } from "./gemini-cli.js";
 import { opencodeAdapter } from "./opencode.js";
 import { antigravityAdapter } from "./antigravity.js";
@@ -9,7 +9,7 @@ import { openclawAdapter } from "./openclaw.js";
 
 export const allAdapters: readonly AgentAdapter[] = [
   claudeCodeAdapter,
-  codexCliAdapter,
+  codexAdapter,
   geminiCliAdapter,
   opencodeAdapter,
   antigravityAdapter,

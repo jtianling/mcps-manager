@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { ServerDefinition, StdioConfig } from "../types.js";
 import { claudeCodeAdapter } from "../adapters/claude-code.js";
-import { codexCliAdapter } from "../adapters/codex-cli.js";
+import { codexAdapter } from "../adapters/codex.js";
 import { geminiCliAdapter } from "../adapters/gemini-cli.js";
 import { opencodeAdapter } from "../adapters/opencode.js";
 import { resolveConfig } from "../utils/resolve-config.js";
@@ -58,7 +58,7 @@ describe("E2E: server add -> deploy to agents -> list -> sync -> remove", () => 
   it("deploys a server definition to all project-level adapters", async () => {
     const adapters = [
       claudeCodeAdapter,
-      codexCliAdapter,
+      codexAdapter,
       geminiCliAdapter,
       opencodeAdapter,
     ];
@@ -71,7 +71,7 @@ describe("E2E: server add -> deploy to agents -> list -> sync -> remove", () => 
     const ccServers = await claudeCodeAdapter.read(tmpDir);
     expect(ccServers["brave-search"]).toBeTruthy();
 
-    const codexServers = await codexCliAdapter.read(tmpDir);
+    const codexServers = await codexAdapter.read(tmpDir);
     expect(codexServers["brave-search"]).toBeTruthy();
 
     const geminiServers = await geminiCliAdapter.read(tmpDir);
@@ -95,7 +95,7 @@ describe("E2E: server add -> deploy to agents -> list -> sync -> remove", () => 
     const ccConfig = resolveConfig(definitionWithOverrides, claudeCodeAdapter);
     expect(ccConfig.transport).toBe("http");
 
-    const codexConfig = resolveConfig(definitionWithOverrides, codexCliAdapter);
+    const codexConfig = resolveConfig(definitionWithOverrides, codexAdapter);
     expect(codexConfig.transport).toBe("stdio");
   });
 
@@ -109,7 +109,7 @@ describe("E2E: server add -> deploy to agents -> list -> sync -> remove", () => 
   it("removes server from all adapters", async () => {
     const adapters = [
       claudeCodeAdapter,
-      codexCliAdapter,
+      codexAdapter,
       geminiCliAdapter,
       opencodeAdapter,
     ];

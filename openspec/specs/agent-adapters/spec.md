@@ -57,9 +57,9 @@ When reading configs back (`fromAgentFormat`), the adapter SHALL handle both the
 - **WHEN** `.mcp.json` 中已存在同名服务
 - **THEN** adapter 报告冲突, 不修改文件
 
-### Requirement: Codex CLI Adapter
+### Requirement: Codex Adapter
 
-系统 SHALL 提供 Codex CLI 的配置适配器, 操作 `.codex/config.toml` 文件.
+系统 SHALL 提供 Codex 的配置适配器, 操作 `.codex/config.toml` 文件. Adapter 的 id SHALL 为 `"codex"`, name SHALL 为 `"Codex"`, 以表示同时支持 Codex CLI 和 Codex App.
 
 #### Scenario: 读取已有配置
 
@@ -68,7 +68,7 @@ When reading configs back (`fromAgentFormat`), the adapter SHALL handle both the
 
 #### Scenario: 写入新服务
 
-- **WHEN** 向 Codex CLI 添加一个 MCP 服务
+- **WHEN** 向 Codex 添加一个 MCP 服务
 - **THEN** adapter 读取 `.codex/config.toml` (不存在则创建 `.codex/` 目录和文件), 在 `[mcp_servers.<name>]` section 下添加服务配置, 使用 env command wrapper 格式 (有 env vars 时 command = "env"), MUST 保留文件中已有的非 MCP section 和注释
 
 #### Scenario: 同名冲突
@@ -145,4 +145,4 @@ When reading configs back (`fromAgentFormat`), the adapter SHALL handle both the
 #### Scenario: 检测项目中的 agent
 
 - **WHEN** 系统需要确定项目使用了哪些 agent
-- **THEN** 系统检查以下文件是否存在: `.mcp.json` (Claude Code), `.codex/` 目录 (Codex CLI), `.gemini/settings.json` (Gemini CLI), `opencode.json` (OpenCode); Antigravity 和 OpenClaw 始终作为可选项列出 (因为仅全局配置)
+- **THEN** 系统检查以下文件是否存在: `.mcp.json` (Claude Code), `.codex/` 目录 (Codex), `.gemini/settings.json` (Gemini CLI), `opencode.json` (OpenCode); Antigravity 和 OpenClaw 始终作为可选项列出 (因为仅全局配置)

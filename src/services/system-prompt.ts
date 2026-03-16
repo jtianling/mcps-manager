@@ -7,7 +7,7 @@ The 5 agents and their configuration differences:
    - HTTP: { "type": "http", "url": "...", "headers": {...} }
    - IMPORTANT: Do NOT use "env" field. Environment variables will be handled separately.
 
-2. **Codex CLI** (.codex/config.toml)
+2. **Codex** (.codex/config.toml)
    - TOML format: command = "...", args = [...]
    - Same key names as Claude Code but in TOML
    - IMPORTANT: Do NOT use "env" field.
@@ -53,7 +53,7 @@ After analyzing the documentation, return a JSON object with this exact structur
 
 Rules:
 - "name" should be a kebab-case identifier for the server
-- "default" should be the most common configuration (usually works for Claude Code, Codex CLI, Gemini CLI)
+- "default" should be the most common configuration (usually works for Claude Code, Codex, Gemini CLI)
 - Only add "overrides" for agents that need DIFFERENT configuration from the default
 - OpenCode usually needs an override because its command format differs (array vs string+args)
 - "requiredEnvVars" lists environment variable names the user needs to provide values for

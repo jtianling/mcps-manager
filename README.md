@@ -6,7 +6,7 @@ Unified MCP (Model Context Protocol) server manager for multiple AI coding agent
 
 ## Problem
 
-Each AI coding agent (Claude Code, Codex CLI, Gemini CLI, OpenCode, Antigravity) uses its own config format for MCP servers. Managing the same servers across multiple agents means editing multiple config files manually, which is tedious and error-prone.
+Each AI coding agent (Claude Code, Codex, Gemini CLI, OpenCode, Antigravity) uses its own config format for MCP servers. Managing the same servers across multiple agents means editing multiple config files manually, which is tedious and error-prone.
 
 ## Solution
 
@@ -15,7 +15,7 @@ Each AI coding agent (Claude Code, Codex CLI, Gemini CLI, OpenCode, Antigravity)
 ```
 Central Repository          Agent Configs
 ┌──────────────────┐   ┌─► Claude Code (.claude.json)
-│  server-a (stdio)│───┼─► Codex CLI   (.codex/config.toml)
+│  server-a (stdio)│───┼─► Codex   (.codex/config.toml)
 │  server-b (http) │   ├─► Gemini CLI  (.gemini/settings.json)
 │  server-c (stdio)│   ├─► OpenCode    (.opencode.json)
 └──────────────────┘   └─► Antigravity (.antigravity/config.json)
@@ -24,7 +24,7 @@ Central Repository          Agent Configs
 ## Features
 
 - **Central server repository** - Define MCP servers once in `~/.mcps-manager/servers/`
-- **Multi-agent support** - Claude Code, Codex CLI, Gemini CLI, OpenCode, Antigravity
+- **Multi-agent support** - Claude Code, Codex, Gemini CLI, OpenCode, Antigravity
 - **AI-assisted setup** - Provide a URL or GitHub repo, and GLM-5 analyzes the documentation to generate the config automatically
 - **Per-agent overrides** - Customize server config for specific agents when needed
 - **Project-level init** - Deploy selected servers to detected agents in any project
@@ -81,7 +81,7 @@ mcpsmgr sync
 | Agent | Config Location | Format |
 |---|---|---|
 | Claude Code | `.claude.json` (project) | JSON |
-| Codex CLI | `.codex/config.toml` (project) | TOML |
+| Codex | `.codex/config.toml` (project) | TOML |
 | Gemini CLI | `.gemini/settings.json` (global) | JSON |
 | OpenCode | `.opencode.json` (project) | JSON |
 | Antigravity | `.antigravity/config.json` (project) | JSON |

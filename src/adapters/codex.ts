@@ -87,9 +87,9 @@ async function writeTomlFile(
   await writeFile(filePath, stringifyToml(data) + "\n", "utf-8");
 }
 
-export const codexCliAdapter: AgentAdapter = {
-  id: "codex-cli",
-  name: "Codex CLI",
+export const codexAdapter: AgentAdapter = {
+  id: "codex",
+  name: "Codex",
   configPath: (projectDir) => join(projectDir, ".codex", "config.toml"),
   isGlobal: false,
 
@@ -108,7 +108,7 @@ export const codexCliAdapter: AgentAdapter = {
     const servers = (parsed["mcp_servers"] as Record<string, unknown>) ?? {};
     if (serverName in servers) {
       throw new Error(
-        `Conflict: "${serverName}" already exists in Codex CLI config`,
+        `Conflict: "${serverName}" already exists in Codex config`,
       );
     }
     const updated = {

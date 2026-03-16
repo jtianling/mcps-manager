@@ -15,7 +15,7 @@ export type DefaultConfig = StdioConfig | HttpConfig;
 
 export type AgentId =
   | "claude-code"
-  | "codex-cli"
+  | "codex"
   | "gemini-cli"
   | "opencode"
   | "antigravity"
