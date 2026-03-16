@@ -5,6 +5,7 @@ import { codexCliAdapter } from "./codex-cli.js";
 import { geminiCliAdapter } from "./gemini-cli.js";
 import { opencodeAdapter } from "./opencode.js";
 import { antigravityAdapter } from "./antigravity.js";
+import { openclawAdapter } from "./openclaw.js";
 
 export const allAdapters: readonly AgentAdapter[] = [
   claudeCodeAdapter,
@@ -12,6 +13,7 @@ export const allAdapters: readonly AgentAdapter[] = [
   geminiCliAdapter,
   opencodeAdapter,
   antigravityAdapter,
+  openclawAdapter,
 ];
 
 export function getAdapter(id: AgentId): AgentAdapter {
