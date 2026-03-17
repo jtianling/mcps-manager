@@ -6,12 +6,12 @@
 
 ### Requirement: OpenClaw Adapter
 
-系统 SHALL 提供 OpenClaw 的配置适配器, 操作 `~/.openclaw/openclaw.json` (全局文件, JSON5 格式).
+系统 SHALL 提供 OpenClaw 的配置适配器, 操作 `~/.openclaw/openclaw.json` (全局文件, JSON5 格式). MCP 服务配置 SHALL 位于 `plugins.entries.acpx.mcpServers` 路径下, 而非顶层 `mcpServers`.
 
 #### Scenario: 读取已有配置
 
-- **WHEN** `~/.openclaw/openclaw.json` 存在且包含 `mcpServers` 字段
-- **THEN** adapter 使用 JSON5 解析文件, 提取 `mcpServers` 下所有 MCP 服务条目
+- **WHEN** `~/.openclaw/openclaw.json` 存在且包含 `plugins.entries.acpx.mcpServers` 字段
+- **THEN** adapter 使用 JSON5 解析文件, 提取 `plugins.entries.acpx.mcpServers` 下所有 MCP 服务条目
 
 #### Scenario: 读取包含注释的配置
 
@@ -25,28 +25,28 @@
 
 #### Scenario: 写入新 stdio 服务
 
-- **WHEN** 向 OpenClaw 添加一个 stdio 类型的 MCP 服务, 且有 env vars
-- **THEN** adapter 读取 `~/.openclaw/openclaw.json` (不存在则创建 `~/.openclaw/` 目录和文件), 在 `mcpServers` 下添加服务条目, 使用 env command wrapper 格式, 不包含 `env` 字段, 保留文件中已有的其他字段和服务条目
+- **WHEN** 向 OpenClaw 添加一个 stdio 类型的 MCP 服务
+- **THEN** adapter 读取 `~/.openclaw/openclaw.json` (不存在则创建 `~/.openclaw/` 目录和文件), 在 `plugins.entries.acpx.mcpServers` 下添加服务条目, 使用原生 `command/args/env` 格式, 解析 `${VAR}` 引用后剩余的 env vars 直接放入 `env` 字段, 同时确保 `plugins.entries.acpx.enabled` 为 `true`, 保留文件中已有的其他字段和服务条目
 
 #### Scenario: 写入新 http 服务
 
 - **WHEN** 向 OpenClaw 添加一个 http 类型的 MCP 服务
-- **THEN** adapter 在 `mcpServers` 下添加服务条目, 格式为 `{ "url": "...", "headers": {...} }`
+- **THEN** adapter SHALL 将 http 服务转换为 mcp-remote 本地命令代理格式: `{ "command": "npx", "args": ["-y", "mcp-remote@latest", "<url>", "--header", "<Key>: <Value>", ...] }`, 因为 OpenClaw 的 acpx 插件不支持直接写 url/headers
 
 #### Scenario: 同名冲突
 
-- **WHEN** `~/.openclaw/openclaw.json` 中 `mcpServers` 下已存在同名服务
+- **WHEN** `~/.openclaw/openclaw.json` 中 `plugins.entries.acpx.mcpServers` 下已存在同名服务
 - **THEN** adapter 抛出冲突错误, 不修改文件
 
 #### Scenario: 移除服务
 
 - **WHEN** 从 OpenClaw 配置中移除一个 MCP 服务
-- **THEN** adapter 从 `mcpServers` 中删除该条目, 保留其他所有条目和字段
+- **THEN** adapter 从 `plugins.entries.acpx.mcpServers` 中删除该条目, 保留其他所有条目和字段
 
 #### Scenario: 检查服务是否存在
 
 - **WHEN** 查询 OpenClaw 配置中某服务是否存在
-- **THEN** adapter 返回该服务名是否在 `mcpServers` 中
+- **THEN** adapter 返回该服务名是否在 `plugins.entries.acpx.mcpServers` 中
 
 ### Requirement: JSON5 文件读写
 

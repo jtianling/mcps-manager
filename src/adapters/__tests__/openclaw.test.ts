@@ -42,29 +42,57 @@ async function loadAdapter(): Promise<AgentAdapter> {
 }
 
 describe("OpenClaw Adapter", () => {
-  it("writes and reads stdio config", async () => {
+  it("writes and reads stdio config with env field", async () => {
     const adapter = await loadAdapter();
     await adapter.write(tmpDir, "brave-search", stdioConfig);
     const servers = await adapter.read(tmpDir);
     expect(servers["brave-search"]).toEqual({
-      command: "env",
-      args: [
-        "BRAVE_API_KEY=test-key",
-        "npx",
-        "-y",
-        "@anthropic/mcp-brave-search",
-      ],
+      command: "npx",
+      args: ["-y", "@anthropic/mcp-brave-search"],
+      env: { BRAVE_API_KEY: "test-key" },
     });
   });
 
-  it("writes and reads http config with url field", async () => {
+  it("writes stdio config without env when env is empty", async () => {
+    const adapter = await loadAdapter();
+    const noEnvConfig: StdioConfig = {
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "pkg"],
+      env: {},
+    };
+    await adapter.write(tmpDir, "test", noEnvConfig);
+    const servers = await adapter.read(tmpDir);
+    expect(servers["test"]).toEqual({
+      command: "npx",
+      args: ["-y", "pkg"],
+    });
+  });
+
+  it("writes http config as mcp-remote wrapper", async () => {
     const adapter = await loadAdapter();
     await adapter.write(tmpDir, "my-mcp", httpConfig);
     const servers = await adapter.read(tmpDir);
     expect(servers["my-mcp"]).toEqual({
-      url: "https://example.com/mcp",
-      headers: { Authorization: "Bearer test-token" },
+      command: "npx",
+      args: [
+        "-y",
+        "mcp-remote@latest",
+        "https://example.com/mcp",
+        "--header",
+        "Authorization: Bearer test-token",
+      ],
     });
+  });
+
+  it("stores config under plugins.entries.acpx.mcpServers", async () => {
+    const adapter = await loadAdapter();
+    await adapter.write(tmpDir, "brave-search", stdioConfig);
+    const raw = JSON.parse(await readFile(configPath, "utf-8"));
+    expect(raw["plugins"]["entries"]["acpx"]["enabled"]).toBe(true);
+    expect(
+      raw["plugins"]["entries"]["acpx"]["mcpServers"]["brave-search"],
+    ).toBeTruthy();
   });
 
   it("throws on conflict", async () => {
@@ -91,19 +119,34 @@ describe("OpenClaw Adapter", () => {
     expect(Object.keys(servers)).toEqual(["first", "second"]);
   });
 
-  it("preserves non-mcpServers fields", async () => {
+  it("preserves other fields in config", async () => {
     const adapter = await loadAdapter();
     const dir = join(tmpDir, ".openclaw");
     await mkdir(dir, { recursive: true });
     await writeFile(
       configPath,
-      JSON.stringify({ theme: "dark", mcpServers: {} }, null, 2) + "\n",
+      JSON.stringify(
+        {
+          theme: "dark",
+          plugins: {
+            entries: {
+              acpx: { enabled: true, mcpServers: {} },
+              other: { enabled: false },
+            },
+          },
+        },
+        null,
+        2,
+      ) + "\n",
       "utf-8",
     );
     await adapter.write(tmpDir, "brave-search", stdioConfig);
     const raw = JSON.parse(await readFile(configPath, "utf-8"));
     expect(raw["theme"]).toBe("dark");
-    expect(raw["mcpServers"]["brave-search"]).toBeTruthy();
+    expect(raw["plugins"]["entries"]["other"]["enabled"]).toBe(false);
+    expect(
+      raw["plugins"]["entries"]["acpx"]["mcpServers"]["brave-search"],
+    ).toBeTruthy();
   });
 
   it("reads JSON5 config with comments and trailing commas", async () => {
@@ -113,11 +156,18 @@ describe("OpenClaw Adapter", () => {
     await writeFile(
       configPath,
       `{
-  // MCP servers config
-  "mcpServers": {
-    "test-server": {
-      "command": "npx",
-      "args": ["-y", "test-pkg"],
+  // OpenClaw config
+  "plugins": {
+    "entries": {
+      "acpx": {
+        "enabled": true,
+        "mcpServers": {
+          "test-server": {
+            "command": "npx",
+            "args": ["-y", "test-pkg"],
+          },
+        },
+      },
     },
   },
 }`,
@@ -140,26 +190,14 @@ describe("OpenClaw Adapter", () => {
     const adapter = await loadAdapter();
     await adapter.write(tmpDir, "brave-search", stdioConfig);
     const raw = JSON.parse(await readFile(configPath, "utf-8"));
-    expect(raw["mcpServers"]["brave-search"]).toBeTruthy();
+    expect(
+      raw["plugins"]["entries"]["acpx"]["mcpServers"]["brave-search"],
+    ).toBeTruthy();
   });
 });
 
 describe("OpenClaw Adapter format conversion", () => {
-  it("converts from env command format", async () => {
-    const adapter = await loadAdapter();
-    const result = adapter.fromAgentFormat("test", {
-      command: "env",
-      args: ["KEY=val", "npx", "-y", "pkg"],
-    });
-    expect(result).toEqual({
-      transport: "stdio",
-      command: "npx",
-      args: ["-y", "pkg"],
-      env: { KEY: "val" },
-    });
-  });
-
-  it("converts from legacy env field format", async () => {
+  it("converts from native env field format", async () => {
     const adapter = await loadAdapter();
     const result = adapter.fromAgentFormat("test", {
       command: "npx",
@@ -174,16 +212,17 @@ describe("OpenClaw Adapter format conversion", () => {
     });
   });
 
-  it("converts from http format with url field", async () => {
+  it("converts from format without env", async () => {
     const adapter = await loadAdapter();
     const result = adapter.fromAgentFormat("test", {
-      url: "https://example.com",
-      headers: { Auth: "token" },
+      command: "npx",
+      args: ["-y", "pkg"],
     });
     expect(result).toEqual({
-      transport: "http",
-      url: "https://example.com",
-      headers: { Auth: "token" },
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "pkg"],
+      env: {},
     });
   });
 
@@ -191,6 +230,16 @@ describe("OpenClaw Adapter format conversion", () => {
     const adapter = await loadAdapter();
     const result = adapter.fromAgentFormat("test", { unknown: true });
     expect(result).toBeUndefined();
+  });
+
+  it("converts stdio config to agent format with env", async () => {
+    const adapter = await loadAdapter();
+    const result = adapter.toAgentFormat(stdioConfig);
+    expect(result).toEqual({
+      command: "npx",
+      args: ["-y", "@anthropic/mcp-brave-search"],
+      env: { BRAVE_API_KEY: "test-key" },
+    });
   });
 
   it("converts stdio config to agent format without env", async () => {
@@ -207,12 +256,32 @@ describe("OpenClaw Adapter format conversion", () => {
     });
   });
 
-  it("converts http config to agent format with url field", async () => {
+  it("converts http config to mcp-remote wrapper", async () => {
     const adapter = await loadAdapter();
     const result = adapter.toAgentFormat(httpConfig);
     expect(result).toEqual({
-      url: "https://example.com/mcp",
-      headers: { Authorization: "Bearer test-token" },
+      command: "npx",
+      args: [
+        "-y",
+        "mcp-remote@latest",
+        "https://example.com/mcp",
+        "--header",
+        "Authorization: Bearer test-token",
+      ],
+    });
+  });
+
+  it("resolves ${VAR} references in args", async () => {
+    const adapter = await loadAdapter();
+    const result = adapter.toAgentFormat({
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "mcp-remote", "--header", "Authorization: Bearer ${API_KEY}"],
+      env: { API_KEY: "sk-123" },
+    });
+    expect(result).toEqual({
+      command: "npx",
+      args: ["-y", "mcp-remote", "--header", "Authorization: Bearer sk-123"],
     });
   });
 });
