@@ -54,7 +54,7 @@ const definitionWithOverrides: ServerDefinition = {
   },
 };
 
-describe("E2E: server add -> deploy to agents -> list -> sync -> remove", () => {
+describe("E2E: install -> deploy to agents -> list -> sync -> remove", () => {
   it("deploys a server definition to all project-level adapters", async () => {
     const adapters = [
       claudeCodeAdapter,

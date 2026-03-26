@@ -1,14 +1,15 @@
 import { program } from "commander";
 import { configExists } from "./utils/config.js";
 import { setupCommand } from "./commands/setup.js";
-import { serverAddCommand } from "./commands/server-add.js";
-import { serverRemoveCommand } from "./commands/server-remove.js";
-import { serverListCommand } from "./commands/server-list.js";
+import { installCommand } from "./commands/install.js";
+import { uninstallCommand } from "./commands/uninstall.js";
 import { initCommand } from "./commands/init.js";
 import { addCommand } from "./commands/add.js";
 import { removeCommand } from "./commands/remove.js";
 import { syncCommand } from "./commands/sync.js";
 import { listCommand } from "./commands/list.js";
+import { customInstallCommand } from "./commands/custom-install.js";
+import { updateCommand } from "./commands/update.js";
 
 function requireSetup(): void {
   if (!configExists()) {
@@ -22,39 +23,47 @@ function requireSetup(): void {
 program
   .name("mcpsmgr")
   .description("Unified MCP server manager for multiple coding agents")
-  .version("0.1.0");
+  .version("0.3.0");
 
 program
   .command("setup")
   .description("Initialize mcpsmgr configuration")
   .action(setupCommand);
 
-const server = program
-  .command("server")
-  .description("Manage MCP server definitions in central repository");
-
-server
-  .command("add [source]")
-  .description("Add an MCP server (URL or GitHub owner/repo)")
+program
+  .command("install [source]")
+  .description("Install an MCP server (URL or GitHub owner/repo)")
   .action((source?: string) => {
     requireSetup();
-    return serverAddCommand(source);
+    return installCommand(source);
   });
 
-server
-  .command("remove <name>")
+program
+  .command("uninstall <name>")
   .description("Remove an MCP server from central repository")
   .action((name: string) => {
     requireSetup();
-    return serverRemoveCommand(name);
+    return uninstallCommand(name);
   });
 
-server
-  .command("list")
-  .description("List all servers in central repository")
-  .action(() => {
+program
+  .command("custom-install [name]")
+  .alias("ci")
+  .description("Install a local MCP server definition to central repository")
+  .option("-f, --force", "Overwrite existing server without confirmation")
+  .action((name: string | undefined, options: { force?: boolean }) => {
     requireSetup();
-    return serverListCommand();
+    return customInstallCommand(name, options);
+  });
+
+program
+  .command("update [name]")
+  .description(
+    "Update installed servers by re-analyzing their source documentation",
+  )
+  .action((name?: string) => {
+    requireSetup();
+    return updateCommand(name);
   });
 
 program
@@ -91,10 +100,11 @@ program
 
 program
   .command("list")
-  .description("List MCP servers across all agent configs in current project")
-  .action(() => {
+  .description("List MCP servers (central repository by default, --deployed for project)")
+  .option("-d, --deployed", "List servers deployed in current project")
+  .action((options: { deployed?: boolean }) => {
     requireSetup();
-    return listCommand();
+    return listCommand(options);
   });
 
 program.parse();

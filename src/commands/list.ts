@@ -1,11 +1,47 @@
 import { allAdapters } from "../adapters/index.js";
+import { listServerDefinitions } from "../utils/server-store.js";
 import type { AgentAdapter } from "../types.js";
 
 interface ServerEntry {
   transport: string;
 }
 
-export async function listCommand(): Promise<void> {
+export async function listCommand(options: {
+  deployed?: boolean;
+}): Promise<void> {
+  if (options.deployed) {
+    await listDeployed();
+  } else {
+    await listInstalled();
+  }
+}
+
+async function listInstalled(): Promise<void> {
+  const servers = await listServerDefinitions();
+
+  if (servers.length === 0) {
+    console.log(
+      'No servers in central repository. Use "mcpsmgr install" to add one.',
+    );
+    return;
+  }
+
+  console.log("\nCentral Repository Servers:\n");
+  for (const server of servers) {
+    const overrideCount = Object.keys(server.overrides).length;
+    const overrideInfo =
+      overrideCount > 0 ? ` (${overrideCount} overrides)` : "";
+    console.log(
+      `  ${server.name} [${server.default.transport}]${overrideInfo}`,
+    );
+    if (server.source) {
+      console.log(`    source: ${server.source}`);
+    }
+  }
+  console.log();
+}
+
+async function listDeployed(): Promise<void> {
   const projectDir = process.cwd();
 
   const matrix: Record<string, Record<string, ServerEntry>> = {};
@@ -38,7 +74,7 @@ export async function listCommand(): Promise<void> {
 
   if (Object.keys(matrix).length === 0) {
     console.log(
-      "No MCP servers found in any agent configuration. Use \"mcpsmgr init\" to get started.",
+      'No MCP servers found in any agent configuration. Use "mcpsmgr init" to get started.',
     );
     return;
   }

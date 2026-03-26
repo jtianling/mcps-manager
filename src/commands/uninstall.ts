@@ -1,6 +1,6 @@
 import { removeServerDefinition, serverExists } from "../utils/server-store.js";
 
-export async function serverRemoveCommand(name: string): Promise<void> {
+export async function uninstallCommand(name: string): Promise<void> {
   if (!serverExists(name)) {
     console.error(`Error: Server "${name}" does not exist in central repository.`);
     process.exitCode = 1;

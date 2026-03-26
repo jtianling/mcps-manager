@@ -45,11 +45,11 @@ npm link
 # 1. Initial setup (configure GLM API key)
 mcpsmgr setup
 
-# 2. Add a server to central repository
-mcpsmgr server add https://github.com/anthropics/some-mcp-server
+# 2. Install a server to central repository
+mcpsmgr install https://github.com/anthropics/some-mcp-server
 
-# Or add manually
-mcpsmgr server add
+# Or install from a local JSON definition
+mcpsmgr custom-install my-server
 
 # 3. Initialize a project (deploy servers to agents)
 cd your-project
@@ -60,21 +60,26 @@ mcpsmgr add my-server
 
 # 5. Sync central changes to project agents
 mcpsmgr sync
+
+# 6. Update installed servers from their sources
+mcpsmgr update
 ```
 
 ## Commands
 
-| Command | Description |
-|---|---|
-| `mcpsmgr setup` | Initialize global configuration |
-| `mcpsmgr server add [source]` | Add a server to central repository (URL, GitHub owner/repo, or manual) |
-| `mcpsmgr server remove <name>` | Remove a server from central repository |
-| `mcpsmgr server list` | List all servers in central repository |
-| `mcpsmgr init` | Deploy servers to agents in current project |
-| `mcpsmgr add <server>` | Add a central server to current project |
-| `mcpsmgr remove <server>` | Remove a server from current project |
-| `mcpsmgr sync` | Sync central repository changes to project |
-| `mcpsmgr list` | List MCP servers across all agents in current project |
+| Command | Alias | Description |
+|---|---|---|
+| `mcpsmgr setup` | | Initialize global configuration |
+| `mcpsmgr install [source]` | | Install a server to central repository (URL, GitHub owner/repo, or manual) |
+| `mcpsmgr uninstall <name>` | | Remove a server from central repository |
+| `mcpsmgr custom-install [name]` | `ci` | Install a local MCP server definition to central repository |
+| `mcpsmgr update [name]` | | Update installed servers by re-analyzing their source documentation |
+| `mcpsmgr list` | | List all servers in central repository |
+| `mcpsmgr list --deployed` | | List MCP servers across all agents in current project |
+| `mcpsmgr init` | | Deploy servers to agents in current project |
+| `mcpsmgr add <server>` | | Add a central server to current project |
+| `mcpsmgr remove <server>` | | Remove a server from current project |
+| `mcpsmgr sync` | | Sync central repository changes to project |
 
 ## Supported Agents
 

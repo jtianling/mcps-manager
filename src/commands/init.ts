@@ -20,7 +20,7 @@ async function initCommandInner(): Promise<void> {
   const servers = await listServerDefinitions();
   if (servers.length === 0) {
     console.log(
-      "Central repository is empty. Use \"mcpsmgr server add\" to add servers first.",
+      "Central repository is empty. Use \"mcpsmgr install\" to add servers first.",
     );
     return;
   }

@@ -1,7 +1,5 @@
-## Purpose
+## MODIFIED Requirements
 
-管理中央仓库中 MCP 服务定义的添加, 移除和列出, 包括通过 GLM5 分析文档自动生成配置.
-## Requirements
 ### Requirement: 通过 URL 添加 MCP 服务
 
 系统 SHALL 支持 `mcpsmgr install <url-or-repo>` 命令, 通过 URL 或 GitHub `owner/repo` 简写添加 MCP 服务到中央仓库.
@@ -89,4 +87,3 @@
 
 - **WHEN** 用户在手动配置模式的任意 prompt 中按 Ctrl-C
 - **THEN** 系统 SHALL 静默退出, 不输出错误堆栈, 不保存任何服务配置, 进程退出码为 0
-

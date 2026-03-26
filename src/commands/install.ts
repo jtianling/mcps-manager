@@ -13,16 +13,16 @@ import {
 } from "../services/glm-client.js";
 import { isUserCancellation } from "../utils/prompt.js";
 
-export async function serverAddCommand(source?: string): Promise<void> {
+export async function installCommand(source?: string): Promise<void> {
   try {
-    await serverAddCommandInner(source);
+    await installCommandInner(source);
   } catch (error) {
     if (isUserCancellation(error)) return;
     throw error;
   }
 }
 
-async function serverAddCommandInner(source?: string): Promise<void> {
+async function installCommandInner(source?: string): Promise<void> {
   const urlInput =
     source ??
     (await input({
@@ -79,7 +79,7 @@ async function serverAddCommandInner(source?: string): Promise<void> {
 
   if (serverExists(analysis.name)) {
     console.error(
-      `Error: Server "${analysis.name}" already exists. Run "mcpsmgr server remove ${analysis.name}" first.`,
+      `Error: Server "${analysis.name}" already exists. Run "mcpsmgr uninstall ${analysis.name}" first.`,
     );
     process.exitCode = 1;
     return;
@@ -144,7 +144,7 @@ function displayAnalysisResult(result: AnalysisResult, source: string): void {
   console.log("---\n");
 }
 
-async function manualAddFlow(): Promise<void> {
+export async function manualAddFlow(): Promise<void> {
   const name = await input({
     message: "Server name (kebab-case):",
     validate: (v) =>
@@ -153,7 +153,7 @@ async function manualAddFlow(): Promise<void> {
 
   if (serverExists(name.trim())) {
     console.error(
-      `Error: Server "${name.trim()}" already exists. Run "mcpsmgr server remove ${name.trim()}" first.`,
+      `Error: Server "${name.trim()}" already exists. Run "mcpsmgr uninstall ${name.trim()}" first.`,
     );
     process.exitCode = 1;
     return;

@@ -19,7 +19,7 @@ async function addCommandInner(serverName: string): Promise<void> {
 
   if (!serverExists(serverName)) {
     console.error(
-      `Error: Server "${serverName}" not found in central repository.`,
+      `Error: Server "${serverName}" not found in central repository. Use "mcpsmgr install" to add it.`,
     );
     process.exitCode = 1;
     return;
