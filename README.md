@@ -48,8 +48,8 @@ mcpsmgr setup
 # 2. Install a server to central repository
 mcpsmgr install https://github.com/anthropics/some-mcp-server
 
-# Or install from a local JSON definition
-mcpsmgr custom-install my-server
+# Or install from a local project directory
+mcpsmgr install ~/workspace/my-mcp-server
 
 # 3. Initialize a project (deploy servers to agents)
 cd your-project
@@ -70,9 +70,8 @@ mcpsmgr update
 | Command | Alias | Description |
 |---|---|---|
 | `mcpsmgr setup` | | Initialize global configuration |
-| `mcpsmgr install [source]` | | Install a server to central repository (URL, GitHub owner/repo, or manual) |
+| `mcpsmgr install [source]` | | Install a server (URL, GitHub owner/repo, local path, or manual) |
 | `mcpsmgr uninstall <name>` | | Remove a server from central repository |
-| `mcpsmgr custom-install [name]` | `ci` | Install a local MCP server definition to central repository |
 | `mcpsmgr update [name]` | | Update installed servers by re-analyzing their source documentation |
 | `mcpsmgr list` | | List all servers in central repository |
 | `mcpsmgr list --deployed` | | List MCP servers across all agents in current project |

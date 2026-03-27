@@ -8,7 +8,6 @@ import { addCommand } from "./commands/add.js";
 import { removeCommand } from "./commands/remove.js";
 import { syncCommand } from "./commands/sync.js";
 import { listCommand } from "./commands/list.js";
-import { customInstallCommand } from "./commands/custom-install.js";
 import { updateCommand } from "./commands/update.js";
 
 function requireSetup(): void {
@@ -32,10 +31,11 @@ program
 
 program
   .command("install [source]")
-  .description("Install an MCP server (URL or GitHub owner/repo)")
-  .action((source?: string) => {
+  .description("Install an MCP server (URL, GitHub owner/repo, or local path)")
+  .option("-f, --force", "Overwrite existing server without confirmation")
+  .action((source: string | undefined, options: { force?: boolean }) => {
     requireSetup();
-    return installCommand(source);
+    return installCommand(source, options);
   });
 
 program
@@ -44,16 +44,6 @@ program
   .action((name: string) => {
     requireSetup();
     return uninstallCommand(name);
-  });
-
-program
-  .command("custom-install [name]")
-  .alias("ci")
-  .description("Install a local MCP server definition to central repository")
-  .option("-f, --force", "Overwrite existing server without confirmation")
-  .action((name: string | undefined, options: { force?: boolean }) => {
-    requireSetup();
-    return customInstallCommand(name, options);
   });
 
 program

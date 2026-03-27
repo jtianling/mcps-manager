@@ -48,8 +48,8 @@ mcpsmgr setup
 # 2. 安装服务器到中央仓库
 mcpsmgr install https://github.com/anthropics/some-mcp-server
 
-# 或从本地 JSON 定义安装
-mcpsmgr custom-install my-server
+# 或从本地项目目录安装
+mcpsmgr install ~/workspace/my-mcp-server
 
 # 3. 初始化项目 (将服务器部署到助手)
 cd your-project
@@ -70,9 +70,8 @@ mcpsmgr update
 | 命令 | 别名 | 说明 |
 |---|---|---|
 | `mcpsmgr setup` | | 初始化全局配置 |
-| `mcpsmgr install [source]` | | 安装服务器到中央仓库 (URL, GitHub owner/repo, 或手动) |
+| `mcpsmgr install [source]` | | 安装服务器 (URL, GitHub owner/repo, 本地路径, 或手动) |
 | `mcpsmgr uninstall <name>` | | 从中央仓库卸载服务器 |
-| `mcpsmgr custom-install [name]` | `ci` | 从本地 JSON 定义安装 MCP 服务器到中央仓库 |
 | `mcpsmgr update [name]` | | 根据来源文档重新分析并更新已安装的服务器配置 |
 | `mcpsmgr list` | | 列出中央仓库中的所有服务器 |
 | `mcpsmgr list --deployed` | | 列出当前项目中所有助手的 MCP 服务器 |
