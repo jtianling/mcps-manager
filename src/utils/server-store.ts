@@ -17,6 +17,10 @@ export async function readServerDefinition(
 export async function writeServerDefinition(
   definition: ServerDefinition,
 ): Promise<void> {
+  if (!existsSync(paths.baseDir)) {
+    await mkdir(paths.baseDir, { recursive: true });
+    await chmod(paths.baseDir, 0o700);
+  }
   if (!existsSync(paths.serversDir)) {
     await mkdir(paths.serversDir, { recursive: true });
   }

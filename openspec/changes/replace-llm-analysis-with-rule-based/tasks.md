@@ -2027,11 +2027,11 @@
       ```
   - [x] **Commit:** `refactor(update): use rule-based analyze for remote sources`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<pending>`
+    - **Commit SHA (fill during apply):** `d499329`
 
 ## 7. Removals and integration test migration
 
-- [ ] 7.1 Remove src/services, src/utils/config.ts, setup command, GlobalConfig types; project still builds
+- [x] 7.1 Remove src/services, src/utils/config.ts, setup command, GlobalConfig types; project still builds
   - kind: build-check
   - **Spec scenario(s):**
     - `glm-integration/spec.md` → Scenario: (all REMOVED requirements — no scenarios to cover; removal verified by absence)
@@ -2056,15 +2056,21 @@
     - Modify: `src/types.ts` (remove `GlobalConfig` interface)
     - Modify: `src/index.ts` (remove setup command, remove `requireSetup`)
     - Modify: `src/utils/server-store.ts` (ensure `~/.mcps-manager/servers/` created on demand)
-  - [ ] **IMPLEMENT:** Remove the listed files, strip `GlobalConfig` from `types.ts`, drop `setup` registration and `requireSetup` guard from `index.ts`, and have `writeServerDefinition` mkdir the base+servers dirs when absent.
-  - [ ] **BUILD-CHECK:** Run tsup build, confirm exit 0 (no dangling imports of deleted modules)
+  - [x] **IMPLEMENT:** Removed `src/services/`, `src/commands/setup.ts`, `src/utils/config.ts`. Stripped `GlobalConfig` from types. Dropped `setup` registration and `requireSetup` guard from index.ts. Removed `paths.configFile`. Updated `writeServerDefinition` to mkdir baseDir (0o700) + serversDir on demand. Replaced legacy install/update flows with new exported helpers wired via production deps.
+  - [x] **BUILD-CHECK:** Run tsup build, confirm exit 0 (no dangling imports of deleted modules)
     - Command: `pnpm build`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      ESM dist/index.js     57.62 KB
+      ESM dist/index.js.map 120.32 KB
+      ESM ⚡️ Build success in 11ms
+      DTS Build start
+      DTS ⚡️ Build success in 392ms
+      DTS dist/index.d.ts 13.00 B
+      (exit 0)
       ```
-  - [ ] **Commit:** `refactor: remove GLM/web-reader services and setup command`
-    - **Commit SHA (fill during apply):** `<to be filled by ts-apply>`
+  - [x] **Commit:** `refactor: remove GLM/web-reader services and setup command`
+    - **Commit SHA (fill during apply):** `<pending>`
 
 - [ ] 7.2 Migrate integration tests to remove GLM imports
   - kind: unit-test

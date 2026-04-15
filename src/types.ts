@@ -28,17 +28,6 @@ export interface ServerDefinition {
   readonly overrides: Readonly<Partial<Record<AgentId, Partial<DefaultConfig>>>>;
 }
 
-export interface GlobalConfig {
-  readonly glm: {
-    readonly apiKey: string;
-    readonly endpoint: string;
-  };
-  readonly webReader: {
-    readonly apiKey: string;
-    readonly url: string;
-  };
-}
-
 export interface AgentAdapter {
   readonly id: AgentId;
   readonly name: string;
