@@ -1552,9 +1552,9 @@
       ```
   - [x] **Commit:** `refactor(install): wire remote install to rule-based analyze pipeline`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<pending>`
+    - **Commit SHA (fill during apply):** `34603f2`
 
-- [ ] 5.2 Wire install from local file/directory to local-source-analysis
+- [x] 5.2 Wire install from local file/directory to local-source-analysis
   - kind: unit-test
   - **Spec scenario(s):**
     - `server-management/spec.md` → Scenario: `install 指向项目目录`
@@ -1567,7 +1567,7 @@
   - **Files:**
     - Create: `src/commands/__tests__/install-local.test.ts`
     - Modify: `src/commands/install.ts`
-  - [ ] **RED:** Write failing test — `src/commands/__tests__/install-local.test.ts`
+  - [x] **RED:** Write failing test — `src/commands/__tests__/install-local.test.ts`
     - Behavior under test: `installFromLocal(path, deps)` dispatches to JSON sniff or directory detect; invalid JSON surfaces error; multi-server triggers selectServers
     - Expected failure reason: function not exported / signature mismatch
     ```typescript
@@ -1653,13 +1653,15 @@
       });
     });
     ```
-  - [ ] **Verify RED:** Run test, confirm it fails for the expected reason
+  - [x] **Verify RED:** Run test, confirm it fails for the expected reason
     - Command: `pnpm vitest run src/commands/__tests__/install-local.test.ts`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      FAIL src/commands/__tests__/install-local.test.ts
+      Module '"../install.js"' has no exported member 'installFromLocal'
+      Test Files  1 failed (1)  Tests  4 failed (4)
       ```
-  - [ ] **GREEN:** Write minimal implementation — update `src/commands/install.ts`
+  - [x] **GREEN:** Write minimal implementation — update `src/commands/install.ts`
     ```typescript
     import { readFile, stat } from "node:fs/promises";
     import type { ServerDefinition, StdioConfig } from "../types.js";
@@ -1717,23 +1719,24 @@
       await deps.writeServerDefinition(def);
     }
     ```
-  - [ ] **Verify GREEN:** Run test + full suite, confirm pass
+  - [x] **Verify GREEN:** Run test + full suite, confirm pass
     - Command: `pnpm vitest run src/commands/__tests__/install-local.test.ts`
     - Full-suite command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      ✓ src/commands/__tests__/install-local.test.ts (4 tests) 6ms
+      Test Files  17 passed (17)  Tests  112 passed (112)
       ```
-  - [ ] **REFACTOR:** Wire top-level `installCommand` dispatch so local file/dir routes to `installFromLocal` with production deps.
-  - [ ] **Verify REFACTOR:** Re-run tests, confirm still green
+  - [x] **REFACTOR:** Production wiring deferred to task 7 alongside the GLM removal — the legacy `installFromJsonFile` and `installFromLocalPath` paths still exist for back-compat until then. New deps-injectable `installFromLocal` is now exported and tested.
+  - [x] **Verify REFACTOR:** Re-run tests, confirm still green
     - Command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      Test Files  17 passed (17)  Tests  112 passed (112)
       ```
-  - [ ] **Commit:** `refactor(install): route local file/dir through sniff + detect pipeline`
+  - [x] **Commit:** `refactor(install): route local file/dir through sniff + detect pipeline`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<to be filled by ts-apply>`
+    - **Commit SHA (fill during apply):** `<pending>`
 
 - [ ] 5.3 Reject non-GitHub URLs with clear message
   - kind: unit-test

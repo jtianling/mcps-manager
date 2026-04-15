@@ -15,6 +15,8 @@ import {
   type AnalysisResult as LegacyAnalysisResult,
 } from "../services/glm-client.js";
 import type { AnalysisResult } from "../install/analyze.js";
+import { sniffLocalJson } from "../install/local-json.js";
+import { detectProjectFromDir } from "../install/local-dir.js";
 import { isUserCancellation } from "../utils/prompt.js";
 
 type SourceType = "remote-url" | "owner-repo" | "local-path" | "local-json" | "manual";
@@ -141,6 +143,61 @@ export async function installFromRemote(
     default: merged,
     overrides: {},
   };
+  await deps.writeServerDefinition(def);
+}
+
+export interface InstallFromLocalDeps {
+  writeServerDefinition: (def: ServerDefinition) => Promise<void>;
+  serverExists: (name: string) => boolean;
+  selectServers: (defs: readonly ServerDefinition[]) => Promise<readonly ServerDefinition[]>;
+  askEnvValue: (key: string) => Promise<string>;
+  confirm: (message: string) => Promise<boolean>;
+  fallbackToManual: () => Promise<void>;
+}
+
+export async function installFromLocal(
+  path: string,
+  deps: InstallFromLocalDeps,
+): Promise<void> {
+  const info = await stat(path);
+  if (info.isFile() && path.endsWith(".json")) {
+    const raw = await readFile(path, "utf-8");
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new Error(`File is not valid JSON: ${path}`);
+    }
+    const defs = sniffLocalJson(parsed);
+    const chosen = await deps.selectServers(defs);
+    for (const d of chosen) await writeOneLocal(d, deps);
+    return;
+  }
+  if (info.isDirectory()) {
+    const detected = await detectProjectFromDir(path);
+    if (!detected) throw new Error(`Cannot detect project type in ${path}`);
+    const def: ServerDefinition = {
+      name: detected.name,
+      source: "local",
+      default: {
+        transport: "stdio",
+        command: detected.command,
+        args: [...detected.args],
+        env: {},
+      } satisfies StdioConfig,
+      overrides: {},
+    };
+    await writeOneLocal(def, deps);
+    return;
+  }
+  throw new Error(`Unsupported local path: ${path}`);
+}
+
+async function writeOneLocal(def: ServerDefinition, deps: InstallFromLocalDeps): Promise<void> {
+  if (deps.serverExists(def.name)) {
+    const overwrite = await deps.confirm(`Server "${def.name}" already exists. Overwrite?`);
+    if (!overwrite) return;
+  }
   await deps.writeServerDefinition(def);
 }
 
