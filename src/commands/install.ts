@@ -17,6 +17,7 @@ import {
 import type { AnalysisResult } from "../install/analyze.js";
 import { sniffLocalJson } from "../install/local-json.js";
 import { detectProjectFromDir } from "../install/local-dir.js";
+import { parseGitHubSource, isGitHubRepo } from "../install/source.js";
 import { isUserCancellation } from "../utils/prompt.js";
 
 type SourceType = "remote-url" | "owner-repo" | "local-path" | "local-json" | "manual";
@@ -93,6 +94,34 @@ async function installCommandInner(
       await manualAddFlow();
       break;
   }
+}
+
+export type ClassifiedInput =
+  | { kind: "github"; value: string }
+  | { kind: "local"; value: string }
+  | { kind: "error"; reason: string };
+
+const LOCAL_PREFIXES = ["/", "./", "../", "~/", "~"];
+
+export function classifyInput(input: string): ClassifiedInput {
+  const trimmed = input.trim();
+  if (LOCAL_PREFIXES.some((p) => trimmed.startsWith(p))) {
+    return { kind: "local", value: trimmed };
+  }
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    if (parseGitHubSource(trimmed)) return { kind: "github", value: trimmed };
+    return {
+      kind: "error",
+      reason:
+        "Only GitHub URLs are supported for remote install. Use ./path.json for other sources.",
+    };
+  }
+  if (isGitHubRepo(trimmed)) return { kind: "github", value: trimmed };
+  return {
+    kind: "error",
+    reason:
+      'Invalid input. Provide a GitHub URL (https://github.com/owner/repo), owner/repo shortname, or a local path (./file.json | ./dir).',
+  };
 }
 
 export interface InstallFromRemoteDeps {

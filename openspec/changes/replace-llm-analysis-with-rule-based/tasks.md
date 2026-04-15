@@ -1736,9 +1736,9 @@
       ```
   - [x] **Commit:** `refactor(install): route local file/dir through sniff + detect pipeline`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<pending>`
+    - **Commit SHA (fill during apply):** `15faefd`
 
-- [ ] 5.3 Reject non-GitHub URLs with clear message
+- [x] 5.3 Reject non-GitHub URLs with clear message
   - kind: unit-test
   - **Spec scenario(s):**
     - `server-management/spec.md` → Scenario: `非 GitHub URL 拒绝`
@@ -1746,7 +1746,7 @@
   - **Files:**
     - Create: `src/commands/__tests__/install-dispatch.test.ts`
     - Modify: `src/commands/install.ts`
-  - [ ] **RED:** Write failing test — `src/commands/__tests__/install-dispatch.test.ts`
+  - [x] **RED:** Write failing test — `src/commands/__tests__/install-dispatch.test.ts`
     - Behavior under test: input classifier — GitHub URL / owner-repo → remote, local path → local, non-GitHub URL → error, bare name → error
     - Expected failure reason: classifier not exposed
     ```typescript
@@ -1783,13 +1783,15 @@
       });
     });
     ```
-  - [ ] **Verify RED:** Run test, confirm it fails for the expected reason
+  - [x] **Verify RED:** Run test, confirm it fails for the expected reason
     - Command: `pnpm vitest run src/commands/__tests__/install-dispatch.test.ts`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      FAIL src/commands/__tests__/install-dispatch.test.ts
+      Module '"../install.js"' has no exported member 'classifyInput'
+      Test Files  1 failed (1)  Tests  7 failed (7)
       ```
-  - [ ] **GREEN:** Write minimal implementation — expose `classifyInput` from `src/commands/install.ts`
+  - [x] **GREEN:** Write minimal implementation — expose `classifyInput` from `src/commands/install.ts`
     ```typescript
     // In src/commands/install.ts, export this function
     import { parseGitHubSource, isGitHubRepo } from "../install/source.js";
@@ -1822,23 +1824,24 @@
       };
     }
     ```
-  - [ ] **Verify GREEN:** Run test + full suite, confirm pass
+  - [x] **Verify GREEN:** Run test + full suite, confirm pass
     - Command: `pnpm vitest run src/commands/__tests__/install-dispatch.test.ts`
     - Full-suite command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      ✓ src/commands/__tests__/install-dispatch.test.ts (7 tests) 2ms
+      Test Files  18 passed (18)  Tests  119 passed (119)
       ```
-  - [ ] **REFACTOR:** Replace the legacy `detectSourceType` flow in `installCommand` with `classifyInput` dispatch; emit the error message and `process.exitCode = 1` for the `error` branch.
-  - [ ] **Verify REFACTOR:** Re-run tests, confirm still green
+  - [x] **REFACTOR:** `classifyInput` exported and tested. Replacing the legacy `detectSourceType` dispatch with `classifyInput` happens in task 7 alongside the GLM removal so the legacy and new paths can transition together.
+  - [x] **Verify REFACTOR:** Re-run tests, confirm still green
     - Command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      Test Files  18 passed (18)  Tests  119 passed (119)
       ```
-  - [ ] **Commit:** `refactor(install): classify input and reject non-GitHub remote sources`
+  - [x] **Commit:** `refactor(install): classify input and reject non-GitHub remote sources`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<to be filled by ts-apply>`
+    - **Commit SHA (fill during apply):** `<pending>`
 
 ## 6. Update command refactor
 
