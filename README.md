@@ -25,7 +25,8 @@ Central Repository          Agent Configs
 
 - **Central server repository** - Define MCP servers once in `~/.mcps-manager/servers/`
 - **Multi-agent support** - Claude Code, Codex, Gemini CLI, OpenCode, Antigravity
-- **AI-assisted setup** - Provide a URL or GitHub repo, and GLM-5 analyzes the documentation to generate the config automatically
+- **Rule-based README parsing** - Provide a GitHub URL or `owner/repo` and `mcpsmgr` extracts the config from `claude mcp add` lines or `mcpServers` JSON blocks in the README
+- **Local source support** - Install from a `*.json` file (any agent's MCP config shape) or from a project directory (auto-detects `package.json` / `pyproject.toml`)
 - **Per-agent overrides** - Customize server config for specific agents when needed
 - **Project-level init** - Deploy selected servers to detected agents in any project
 - **Sync** - Push central repository updates to all agent configs
@@ -42,26 +43,23 @@ npm link
 ## Quick Start
 
 ```bash
-# 1. Initial setup (configure GLM API key)
-mcpsmgr setup
+# 1. Install a server to central repository
+mcpsmgr install anthropics/some-mcp-server                # GitHub owner/repo
+mcpsmgr install https://github.com/anthropics/some-repo   # GitHub URL
+mcpsmgr install ./my-mcp.json                             # Local JSON config
+mcpsmgr install ~/workspace/my-mcp-server                 # Local project dir
 
-# 2. Install a server to central repository
-mcpsmgr install https://github.com/anthropics/some-mcp-server
-
-# Or install from a local project directory
-mcpsmgr install ~/workspace/my-mcp-server
-
-# 3. Initialize a project (deploy servers to agents)
+# 2. Initialize a project (deploy servers to agents)
 cd your-project
 mcpsmgr init
 
-# 4. Add a specific server to the current project
+# 3. Add a specific server to the current project
 mcpsmgr add my-server
 
-# 5. Sync central changes to project agents
+# 4. Sync central changes to project agents
 mcpsmgr sync
 
-# 6. Update installed servers from their sources
+# 5. Update installed servers from their sources
 mcpsmgr update
 ```
 
@@ -69,8 +67,7 @@ mcpsmgr update
 
 | Command | Alias | Description |
 |---|---|---|
-| `mcpsmgr setup` | | Initialize global configuration |
-| `mcpsmgr install [source]` | | Install a server (URL, GitHub owner/repo, local path, or manual) |
+| `mcpsmgr install [source]` | | Install a server (GitHub URL, owner/repo, local JSON, local dir, or manual) |
 | `mcpsmgr uninstall <name>` | | Remove a server from central repository |
 | `mcpsmgr update [name]` | | Update installed servers by re-analyzing their source documentation |
 | `mcpsmgr list` | | List all servers in central repository |
@@ -96,7 +93,7 @@ mcpsmgr update
 
 2. **Agent Adapters** understand each agent's config format. When deploying, `mcpsmgr` resolves the final config (default + overrides) and writes it in the agent's native format.
 
-3. **AI Analysis** (optional) uses GLM-5 to read MCP server documentation and auto-generate the server definition, including command, args, env vars, and transport type.
+3. **Rule-based README analysis** runs deterministically when installing from a GitHub source. It scans the README for `claude mcp add ...` lines inside fenced code blocks, then for `mcpServers` JSON blocks, then bare `{command, args}` blocks, and finally falls back to `package.json` / `pyproject.toml` lookups. If no shape matches, the install drops to the manual prompt flow.
 
 ## License
 

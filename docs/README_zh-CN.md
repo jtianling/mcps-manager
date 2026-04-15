@@ -25,7 +25,8 @@
 
 - **中央服务器仓库** - 在 `~/.mcps-manager/servers/` 中统一定义 MCP 服务器
 - **多助手支持** - Claude Code, Codex, Gemini CLI, OpenCode, Antigravity
-- **AI 辅助配置** - 提供 URL 或 GitHub 仓库地址, GLM-5 自动分析文档并生成配置
+- **基于规则的 README 解析** - 提供 GitHub URL 或 `owner/repo`, `mcpsmgr` 从 README 的 `claude mcp add` 命令行或 `mcpServers` JSON 块中抽取配置
+- **本地源支持** - 可从 `*.json` 配置文件 (任何助手的 MCP 配置形状) 或本地项目目录 (自动探测 `package.json` / `pyproject.toml`) 安装
 - **按助手覆盖** - 可针对特定助手自定义服务器配置
 - **项目级初始化** - 将选定的服务器部署到项目中检测到的助手
 - **同步** - 将中央仓库的更新推送到所有助手配置
@@ -42,26 +43,23 @@ npm link
 ## 快速开始
 
 ```bash
-# 1. 初始化配置 (设置 GLM API 密钥)
-mcpsmgr setup
+# 1. 安装服务器到中央仓库
+mcpsmgr install anthropics/some-mcp-server                # GitHub owner/repo
+mcpsmgr install https://github.com/anthropics/some-repo   # GitHub URL
+mcpsmgr install ./my-mcp.json                             # 本地 JSON 配置
+mcpsmgr install ~/workspace/my-mcp-server                 # 本地项目目录
 
-# 2. 安装服务器到中央仓库
-mcpsmgr install https://github.com/anthropics/some-mcp-server
-
-# 或从本地项目目录安装
-mcpsmgr install ~/workspace/my-mcp-server
-
-# 3. 初始化项目 (将服务器部署到助手)
+# 2. 初始化项目 (将服务器部署到助手)
 cd your-project
 mcpsmgr init
 
-# 4. 向当前项目添加特定服务器
+# 3. 向当前项目添加特定服务器
 mcpsmgr add my-server
 
-# 5. 将中央仓库的变更同步到项目
+# 4. 将中央仓库的变更同步到项目
 mcpsmgr sync
 
-# 6. 更新已安装的服务器
+# 5. 更新已安装的服务器
 mcpsmgr update
 ```
 
@@ -69,8 +67,7 @@ mcpsmgr update
 
 | 命令 | 别名 | 说明 |
 |---|---|---|
-| `mcpsmgr setup` | | 初始化全局配置 |
-| `mcpsmgr install [source]` | | 安装服务器 (URL, GitHub owner/repo, 本地路径, 或手动) |
+| `mcpsmgr install [source]` | | 安装服务器 (GitHub URL, owner/repo, 本地 JSON, 本地目录, 或手动) |
 | `mcpsmgr uninstall <name>` | | 从中央仓库卸载服务器 |
 | `mcpsmgr update [name]` | | 根据来源文档重新分析并更新已安装的服务器配置 |
 | `mcpsmgr list` | | 列出中央仓库中的所有服务器 |
@@ -96,7 +93,7 @@ mcpsmgr update
 
 2. **助手适配器** 理解每个助手的配置格式.  部署时, `mcpsmgr` 解析最终配置 (默认 + 覆盖) 并以助手的原生格式写入.
 
-3. **AI 分析** (可选) 使用 GLM-5 读取 MCP 服务器文档, 自动生成服务器定义, 包括命令, 参数, 环境变量和传输类型.
+3. **基于规则的 README 分析** 在从 GitHub 来源安装时确定性运行. 它先扫 README 的 fenced code block 内的 `claude mcp add ...` 行, 再扫 `mcpServers` JSON 块, 然后是裸 `{command, args}` 块, 最后兜底查找 `package.json` / `pyproject.toml`. 都不命中则降级到手动向导.
 
 ## 许可证
 

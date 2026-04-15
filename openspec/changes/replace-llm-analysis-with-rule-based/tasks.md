@@ -2129,15 +2129,15 @@
       ```
   - [x] **Commit:** `test(integration): rewire imports to src/install/source after GLM removal`
     - Staging order: test file BEFORE production file (production already committed in 7.1)
-    - **Commit SHA (fill during apply):** `<pending>`
+    - **Commit SHA (fill during apply):** `b6ff6fa`
 
 ## 8. Documentation
 
-- [ ] 8.1 Update README.md and docs/README_zh-CN.md to remove GLM references
+- [x] 8.1 Update README.md and docs/README_zh-CN.md to remove GLM references
   - kind: skip-doc-only
   - **Spec scenario(s):**
     - `readme-analysis/spec.md` → Scenario: `fetch README.md 成功` (documented in README)
-  - [ ] **SKIP:** skip-doc-only — README updates are pure documentation reflecting code that has already been implemented and verified. Removing "AI-assisted setup / GLM-5" language from README.md and docs/README_zh-CN.md, updating the "How It Works" section, and removing `mcpsmgr setup` from the Quick Start. No runtime behavior to verify.
+  - [x] **SKIP:** skip-doc-only — README.md and docs/README_zh-CN.md updated: removed "AI-assisted / GLM-5" language, dropped `mcpsmgr setup` from Quick Start and command table, added local `*.json` and project-dir install examples, and rewrote the "How It Works" / "工作原理" section to describe the rule-based parser (`claude mcp add` line → `mcpServers` JSON → bare JSON → manifest fallback → manual). Pure docs change, no runtime behavior.
 
 ## Scenario Coverage Matrix
 
