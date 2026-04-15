@@ -1280,16 +1280,16 @@
       ```
   - [x] **Commit:** `feat(install): detect node/python projects from local directory manifest`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<pending>`
+    - **Commit SHA (fill during apply):** `87333e8`
 
-- [ ] 4.3 Implement multi-server interactive selection helper
+- [x] 4.3 Implement multi-server interactive selection helper
   - kind: unit-test
   - **Spec scenario(s):**
     - `local-source-analysis/spec.md` → Scenario: `多 server 交互式选择`
   - **Files:**
     - Create: `src/install/__tests__/select-servers.test.ts`
     - Create: `src/install/select-servers.ts`
-  - [ ] **RED:** Write failing test — `src/install/__tests__/select-servers.test.ts`
+  - [x] **RED:** Write failing test — `src/install/__tests__/select-servers.test.ts`
     - Behavior under test: buildChoices maps a list of candidates to inquirer `checkbox` choices with all `checked: true` by default; selectServers delegates to injected `checkbox` function
     - Expected failure reason: module does not exist
     ```typescript
@@ -1327,13 +1327,15 @@
       });
     });
     ```
-  - [ ] **Verify RED:** Run test, confirm it fails for the expected reason
+  - [x] **Verify RED:** Run test, confirm it fails for the expected reason
     - Command: `pnpm vitest run src/install/__tests__/select-servers.test.ts`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      FAIL src/install/__tests__/select-servers.test.ts
+      Cannot find module '../select-servers.js'
+      Test Files  1 failed (1)
       ```
-  - [ ] **GREEN:** Write minimal implementation — `src/install/select-servers.ts`
+  - [x] **GREEN:** Write minimal implementation — `src/install/select-servers.ts`
     ```typescript
     import type { ServerDefinition } from "../types.js";
 
@@ -1367,23 +1369,24 @@
       return defs.filter((d) => set.has(d.name));
     }
     ```
-  - [ ] **Verify GREEN:** Run test + full suite, confirm pass
+  - [x] **Verify GREEN:** Run test + full suite, confirm pass
     - Command: `pnpm vitest run src/install/__tests__/select-servers.test.ts`
     - Full-suite command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      ✓ src/install/__tests__/select-servers.test.ts (3 tests) 1ms
+      Test Files  15 passed (15)  Tests  105 passed (105)
       ```
-  - [ ] **REFACTOR:** None — already minimal
-  - [ ] **Verify REFACTOR:** Re-run tests, confirm still green
+  - [x] **REFACTOR:** None — already minimal
+  - [x] **Verify REFACTOR:** Re-run tests, confirm still green
     - Command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      Test Files  15 passed (15)  Tests  105 passed (105)
       ```
-  - [ ] **Commit:** `feat(install): add multi-server interactive selection helper`
+  - [x] **Commit:** `feat(install): add multi-server interactive selection helper`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<to be filled by ts-apply>`
+    - **Commit SHA (fill during apply):** `<pending>`
 
 ## 5. Install command refactor
 
