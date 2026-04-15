@@ -995,11 +995,11 @@
       ```
   - [x] **Commit:** `feat(install): analyze pipeline with manifest fallback and P1/P2 merge`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<pending>`
+    - **Commit SHA (fill during apply):** `33931c0`
 
 ## 4. Local source analysis
 
-- [ ] 4.1 Implement local JSON multi-shape sniff
+- [x] 4.1 Implement local JSON multi-shape sniff
   - kind: unit-test
   - **Spec scenario(s):**
     - `local-source-analysis/spec.md` → Scenario: `ServerDefinition 形状`
@@ -1012,7 +1012,7 @@
   - **Files:**
     - Create: `src/install/__tests__/local-json.test.ts`
     - Create: `src/install/local-json.ts`
-  - [ ] **RED:** Write failing test — `src/install/__tests__/local-json.test.ts`
+  - [x] **RED:** Write failing test — `src/install/__tests__/local-json.test.ts`
     - Behavior under test: given a JSON string/object, try known shapes in order, return list of ServerDefinition candidates
     - Expected failure reason: module does not exist
     ```typescript
@@ -1082,13 +1082,15 @@
       });
     });
     ```
-  - [ ] **Verify RED:** Run test, confirm it fails for the expected reason
+  - [x] **Verify RED:** Run test, confirm it fails for the expected reason
     - Command: `pnpm vitest run src/install/__tests__/local-json.test.ts`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      FAIL src/install/__tests__/local-json.test.ts
+      Cannot find module '../local-json.js'
+      Test Files  1 failed (1)
       ```
-  - [ ] **GREEN:** Write minimal implementation — `src/install/local-json.ts`
+  - [x] **GREEN:** Write minimal implementation — `src/install/local-json.ts`
     ```typescript
     import type { ServerDefinition, DefaultConfig } from "../types.js";
     import { claudeCodeAdapter } from "../adapters/claude-code.js";
@@ -1145,23 +1147,24 @@
       );
     }
     ```
-  - [ ] **Verify GREEN:** Run test + full suite, confirm pass
+  - [x] **Verify GREEN:** Run test + full suite, confirm pass
     - Command: `pnpm vitest run src/install/__tests__/local-json.test.ts`
     - Full-suite command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      ✓ src/install/__tests__/local-json.test.ts (6 tests) 2ms
+      Test Files  13 passed (13)  Tests  99 passed (99)
       ```
-  - [ ] **REFACTOR:** None — already minimal
-  - [ ] **Verify REFACTOR:** Re-run tests, confirm still green
+  - [x] **REFACTOR:** None — already minimal
+  - [x] **Verify REFACTOR:** Re-run tests, confirm still green
     - Command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      Test Files  13 passed (13)  Tests  99 passed (99)
       ```
-  - [ ] **Commit:** `feat(install): sniff local JSON across ServerDefinition/mcpServers/mcp shapes`
+  - [x] **Commit:** `feat(install): sniff local JSON across ServerDefinition/mcpServers/mcp shapes`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<to be filled by ts-apply>`
+    - **Commit SHA (fill during apply):** `<pending>`
 
 - [ ] 4.2 Implement local directory manifest detection
   - kind: unit-test
