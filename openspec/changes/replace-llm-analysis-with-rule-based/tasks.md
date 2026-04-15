@@ -389,11 +389,11 @@
       Error path triggers gh fallback then surfaces clean error when gh also fails.
       ```
   - [x] **Commit:** `test(install): verify github-readme chain against live repos`
-    - **Commit SHA (fill during apply):** `<pending>`
+    - **Commit SHA (fill during apply):** `a57a09f`
 
 ## 3. README rule-based parsers
 
-- [ ] 3.1 Implement `claude mcp add` CLI line parser (P1)
+- [x] 3.1 Implement `claude mcp add` CLI line parser (P1)
   - kind: unit-test
   - **Spec scenario(s):**
     - `readme-analysis/spec.md` → Scenario: `标准 claude mcp add name cmd args 行`
@@ -403,7 +403,7 @@
   - **Files:**
     - Create: `src/install/__tests__/parse-claude-mcp-add.test.ts`
     - Create: `src/install/parse-claude-mcp-add.ts`
-  - [ ] **RED:** Write failing test — `src/install/__tests__/parse-claude-mcp-add.test.ts`
+  - [x] **RED:** Write failing test — `src/install/__tests__/parse-claude-mcp-add.test.ts`
     - Behavior under test: scan README markdown, find `claude mcp add` lines inside fenced code blocks only, parse into structured result
     - Expected failure reason: module does not exist
     ```typescript
@@ -455,13 +455,15 @@
       });
     });
     ```
-  - [ ] **Verify RED:** Run test, confirm it fails for the expected reason
+  - [x] **Verify RED:** Run test, confirm it fails for the expected reason
     - Command: `pnpm vitest run src/install/__tests__/parse-claude-mcp-add.test.ts`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      FAIL src/install/__tests__/parse-claude-mcp-add.test.ts
+      Cannot find module '../parse-claude-mcp-add.js'
+      Test Files  1 failed (1)
       ```
-  - [ ] **GREEN:** Write minimal implementation — `src/install/parse-claude-mcp-add.ts`
+  - [x] **GREEN:** Write minimal implementation — `src/install/parse-claude-mcp-add.ts`
     ```typescript
     import { tokenize } from "./shell-tokenize.js";
 
@@ -531,23 +533,26 @@
       return { name, transport: "stdio", command, args, envKeys };
     }
     ```
-  - [ ] **Verify GREEN:** Run test + full suite, confirm pass
+  - [x] **Verify GREEN:** Run test + full suite, confirm pass
     - Command: `pnpm vitest run src/install/__tests__/parse-claude-mcp-add.test.ts`
     - Full-suite command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      ✓ src/install/__tests__/parse-claude-mcp-add.test.ts (5 tests) 2ms
+      Test Files  1 passed (1)  Tests  5 passed (5)
+      Full suite: Test Files 10 passed (10), Tests 81 passed (81)
       ```
-  - [ ] **REFACTOR:** None — already minimal
-  - [ ] **Verify REFACTOR:** Re-run tests, confirm still green
+  - [x] **REFACTOR:** Switched from i-pointer-as-name to positionals-list classifier — flags can now interleave around the name, matching real `claude mcp add` usage.
+  - [x] **Verify REFACTOR:** Re-run tests, confirm still green
     - Command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      Test Files  10 passed (10)
+      Tests  81 passed (81)
       ```
-  - [ ] **Commit:** `feat(install): parse claude mcp add CLI lines from README`
+  - [x] **Commit:** `feat(install): parse claude mcp add CLI lines from README`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<to be filled by ts-apply>`
+    - **Commit SHA (fill during apply):** `<pending>`
 
 - [ ] 3.2 Implement JSON block parsers (P2 mcpServers + P3 bare shape)
   - kind: unit-test
