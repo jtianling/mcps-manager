@@ -2070,16 +2070,16 @@
       (exit 0)
       ```
   - [x] **Commit:** `refactor: remove GLM/web-reader services and setup command`
-    - **Commit SHA (fill during apply):** `<pending>`
+    - **Commit SHA (fill during apply):** `78f12ad` (amended to include this evidence update)
 
-- [ ] 7.2 Migrate integration tests to remove GLM imports
+- [x] 7.2 Migrate integration tests to remove GLM imports
   - kind: unit-test
   - **Spec scenario(s):**
     - `server-management/spec.md` → Scenario: `使用 GitHub 简写添加`
     - `server-management/spec.md` → Scenario: `分析结果交互式确认 / 用户信任分析结果`
   - **Files:**
     - Modify: `src/__tests__/integration.test.ts`
-  - [ ] **RED:** Update the test file's GLM imports; test run should fail because `../services/glm-client.js` no longer exists
+  - [x] **RED:** Update the test file's GLM imports; test run should fail because `../services/glm-client.js` no longer exists
     - Behavior under test: the integration test file previously imported `isGitHubRepo`, `isValidInput`, `buildUserMessage` from glm-client; these now live in `src/install/source.js` (the first two) while `buildUserMessage` is gone. The test should still exercise e2e deploy + list + sync + remove flows.
     - Expected failure reason: import `../services/glm-client.js` cannot be resolved after 7.1
     ```typescript
@@ -2088,13 +2088,15 @@
     // (drop buildUserMessage — it no longer exists; any test citing GLM-specific behavior should be rewritten or removed.)
     ```
     The RED condition is that running `pnpm vitest run src/__tests__/integration.test.ts` after task 7.1 (but before editing this test) fails with an unresolved import.
-  - [ ] **Verify RED:** Run test, confirm it fails for the expected reason
+  - [x] **Verify RED:** Run test, confirm it fails for the expected reason
     - Command: `pnpm vitest run src/__tests__/integration.test.ts`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      FAIL src/__tests__/integration.test.ts
+      Error: Failed to resolve import "../services/glm-client.js" from "src/__tests__/integration.test.ts"
+      Test Files  1 failed (1)
       ```
-  - [ ] **GREEN:** Apply the import rewrite above and remove any assertions on `buildUserMessage`. Retain all other existing assertions around adapters, deploy, list, sync, remove. No new test code needed — just the import fix.
+  - [x] **GREEN:** Apply the import rewrite above and remove any assertions on `buildUserMessage`. Retain all other existing assertions around adapters, deploy, list, sync, remove. Also updated `validates input formats` to reflect the new GitHub-only acceptance.
     ```typescript
     // Final src/__tests__/integration.test.ts imports:
     import { describe, it, expect, beforeEach, afterEach } from "vitest";
@@ -2110,23 +2112,24 @@
     import { isGitHubRepo, isValidInput } from "../install/source.js";
     // ... rest of file unchanged except removal of any buildUserMessage assertion
     ```
-  - [ ] **Verify GREEN:** Run test + full suite, confirm pass
+  - [x] **Verify GREEN:** Run test + full suite, confirm pass
     - Command: `pnpm vitest run src/__tests__/integration.test.ts`
     - Full-suite command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      Test Files  19 passed (19)  Tests  121 passed (121)
+      (integration.test.ts: 8 tests passing — 2 buildUserMessage tests removed; isValidInput updated for GitHub-only)
       ```
-  - [ ] **REFACTOR:** None — test file touched minimally.
-  - [ ] **Verify REFACTOR:** Re-run tests, confirm still green
+  - [x] **REFACTOR:** Removed the two `buildUserMessage` tests (LLM-specific assertions, no longer applicable). Updated `validates input formats` to reflect the new GitHub-only URL acceptance.
+  - [x] **Verify REFACTOR:** Re-run tests, confirm still green
     - Command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      Test Files  19 passed (19)  Tests  121 passed (121)
       ```
-  - [ ] **Commit:** `test(integration): rewire imports to src/install/source after GLM removal`
+  - [x] **Commit:** `test(integration): rewire imports to src/install/source after GLM removal`
     - Staging order: test file BEFORE production file (production already committed in 7.1)
-    - **Commit SHA (fill during apply):** `<to be filled by ts-apply>`
+    - **Commit SHA (fill during apply):** `<pending>`
 
 ## 8. Documentation
 

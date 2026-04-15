@@ -8,11 +8,7 @@ import { codexAdapter } from "../adapters/codex.js";
 import { geminiCliAdapter } from "../adapters/gemini-cli.js";
 import { opencodeAdapter } from "../adapters/opencode.js";
 import { resolveConfig } from "../utils/resolve-config.js";
-import {
-  isGitHubRepo,
-  isValidInput,
-  buildUserMessage,
-} from "../services/glm-client.js";
+import { isGitHubRepo, isValidInput } from "../install/source.js";
 
 let tmpDir: string;
 
@@ -175,8 +171,12 @@ describe("Input validation", () => {
   });
 
   it("validates input formats", () => {
-    expect(isValidInput("https://example.com")).toEqual({ valid: true });
+    expect(isValidInput("https://github.com/anthropics/mcp")).toEqual({ valid: true });
     expect(isValidInput("anthropics/mcp")).toEqual({ valid: true });
+    expect(isValidInput("https://example.com")).toEqual({
+      valid: false,
+      reason: expect.any(String),
+    });
     expect(isValidInput("@scope/pkg")).toEqual({
       valid: false,
       reason: expect.any(String),
@@ -187,14 +187,4 @@ describe("Input validation", () => {
     });
   });
 
-  it("builds correct user message for GitHub repos", () => {
-    const msg = buildUserMessage("anthropics/mcp-brave-search");
-    expect(msg).toContain("https://github.com/anthropics/mcp-brave-search");
-    expect(msg).toContain("README");
-  });
-
-  it("builds correct user message for URLs", () => {
-    const msg = buildUserMessage("https://docs.example.com/mcp");
-    expect(msg).toContain("https://docs.example.com/mcp");
-  });
 });
