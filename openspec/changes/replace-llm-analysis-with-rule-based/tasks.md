@@ -1164,9 +1164,9 @@
       ```
   - [x] **Commit:** `feat(install): sniff local JSON across ServerDefinition/mcpServers/mcp shapes`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<pending>`
+    - **Commit SHA (fill during apply):** `84959f2`
 
-- [ ] 4.2 Implement local directory manifest detection
+- [x] 4.2 Implement local directory manifest detection
   - kind: unit-test
   - **Spec scenario(s):**
     - `local-source-analysis/spec.md` → Scenario: `Node.js 项目`
@@ -1175,7 +1175,7 @@
   - **Files:**
     - Create: `src/install/__tests__/local-dir.test.ts`
     - Create: `src/install/local-dir.ts`
-  - [ ] **RED:** Write failing test — `src/install/__tests__/local-dir.test.ts`
+  - [x] **RED:** Write failing test — `src/install/__tests__/local-dir.test.ts`
     - Behavior under test: given a directory path, detect project type from manifest files, return suggested command/args, or undefined
     - Expected failure reason: module does not exist
     ```typescript
@@ -1224,13 +1224,15 @@
       });
     });
     ```
-  - [ ] **Verify RED:** Run test, confirm it fails for the expected reason
+  - [x] **Verify RED:** Run test, confirm it fails for the expected reason
     - Command: `pnpm vitest run src/install/__tests__/local-dir.test.ts`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      FAIL src/install/__tests__/local-dir.test.ts
+      Cannot find module '../local-dir.js'
+      Test Files  1 failed (1)
       ```
-  - [ ] **GREEN:** Write minimal implementation — `src/install/local-dir.ts`
+  - [x] **GREEN:** Write minimal implementation — `src/install/local-dir.ts`
     ```typescript
     import { existsSync } from "node:fs";
     import { readFile } from "node:fs/promises";
@@ -1261,23 +1263,24 @@
       return undefined;
     }
     ```
-  - [ ] **Verify GREEN:** Run test + full suite, confirm pass
+  - [x] **Verify GREEN:** Run test + full suite, confirm pass
     - Command: `pnpm vitest run src/install/__tests__/local-dir.test.ts`
     - Full-suite command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      ✓ src/install/__tests__/local-dir.test.ts (3 tests) 4ms
+      Test Files  14 passed (14)  Tests  102 passed (102)
       ```
-  - [ ] **REFACTOR:** None — already minimal
-  - [ ] **Verify REFACTOR:** Re-run tests, confirm still green
+  - [x] **REFACTOR:** None — already minimal
+  - [x] **Verify REFACTOR:** Re-run tests, confirm still green
     - Command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      Test Files  14 passed (14)  Tests  102 passed (102)
       ```
-  - [ ] **Commit:** `feat(install): detect node/python projects from local directory manifest`
+  - [x] **Commit:** `feat(install): detect node/python projects from local directory manifest`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<to be filled by ts-apply>`
+    - **Commit SHA (fill during apply):** `<pending>`
 
 - [ ] 4.3 Implement multi-server interactive selection helper
   - kind: unit-test
