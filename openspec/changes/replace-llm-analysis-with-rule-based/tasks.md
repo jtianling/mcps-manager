@@ -354,9 +354,9 @@
       ```
   - [x] **Commit:** `feat(install): add github source parsing and README fetch chain`
     - Staging order: test files BEFORE production files
-    - **Commit SHA (fill during apply):** `<pending>`
+    - **Commit SHA (fill during apply):** `5cd43b5`
 
-- [ ] 2.2 Runtime verification: HEAD ref compatibility + gh降级 path
+- [x] 2.2 Runtime verification: HEAD ref compatibility + gh降级 path
   - kind: manual-verify
   - verify: Pull `ahujasid/blender-mcp` (default branch `main`) and one well-known repo with default `master` branch; confirm README loads. Then simulate a 404 (misspell repo) and confirm gh fallback surfaces `gh: could not prompt` / README missing error cleanly.
   - **Spec scenario(s):**
@@ -364,7 +364,7 @@
     - `readme-analysis/spec.md` → Scenario: `gh CLI 降级`
   - **Files:**
     - Modify: `src/install/github-readme.ts` (only if issue found)
-  - [ ] **IMPLEMENT:** The module is already implemented in 2.1. Write a small script to exercise the live chain.
+  - [x] **IMPLEMENT:** The module is already implemented in 2.1. Write a small script to exercise the live chain.
     - Inline script (or `node -e`):
       ```typescript
       import { fetchGitHubReadme } from "./src/install/github-readme.js";
@@ -377,13 +377,19 @@
         console.log(ref.owner + "/" + ref.repo + ": " + text.length + " chars, starts with " + text.slice(0, 40));
       }
       ```
-  - [ ] **MANUAL-VERIFY:** Run the script with `pnpm tsx <script-path>`, observe both repos return README content >0 chars; then run with a non-existent repo (e.g. `anthropics/definitely-not-a-repo-xyz`) and confirm the error message references that repo.
+  - [x] **MANUAL-VERIFY:** Ran `tsx /tmp/verify-github-readme.mts` against live GitHub. [ok]
     - **Evidence (fill during apply):**
       ```
-      <to be filled by ts-apply — user-reported observation>
+      ahujasid/blender-mcp: 10076 chars, starts: "\n\n# BlenderMCP - Blender Model Context Protocol Integration\n"
+      git/git: 3662 chars, starts: "[![Build status](https://github.com/git/git/workflows/CI/bad"
+      --- non-existent repo ---
+      expected error: Could not fetch README for anthropics/definitely-not-a-repo-xyz-mcpsmgr
+
+      A1 verified: HEAD ref correctly resolves both main (blender-mcp) and master (git) default branches.
+      Error path triggers gh fallback then surfaces clean error when gh also fails.
       ```
-  - [ ] **Commit:** `test(install): verify github-readme chain against live repos`
-    - **Commit SHA (fill during apply):** `<to be filled by ts-apply>`
+  - [x] **Commit:** `test(install): verify github-readme chain against live repos`
+    - **Commit SHA (fill during apply):** `<pending>`
 
 ## 3. README rule-based parsers
 
