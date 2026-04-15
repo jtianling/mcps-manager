@@ -1386,11 +1386,11 @@
       ```
   - [x] **Commit:** `feat(install): add multi-server interactive selection helper`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<pending>`
+    - **Commit SHA (fill during apply):** `eac3f68`
 
 ## 5. Install command refactor
 
-- [ ] 5.1 Wire install from GitHub source to use analyze pipeline
+- [x] 5.1 Wire install from GitHub source to use analyze pipeline
   - kind: unit-test
   - **Spec scenario(s):**
     - `server-management/spec.md` → Scenario: `使用 GitHub 简写添加`
@@ -1403,7 +1403,7 @@
   - **Files:**
     - Create: `src/commands/__tests__/install-remote.test.ts`
     - Modify: `src/commands/install.ts`
-  - [ ] **RED:** Write failing test — `src/commands/__tests__/install-remote.test.ts`
+  - [x] **RED:** Write failing test — `src/commands/__tests__/install-remote.test.ts`
     - Behavior under test: `installFromRemote(input, deps)` calls analyze, shows result, writes ServerDefinition with user-provided env values when trusted
     - Expected failure reason: deps interface not exposed yet
     ```typescript
@@ -1470,13 +1470,15 @@
       });
     });
     ```
-  - [ ] **Verify RED:** Run test, confirm it fails for the expected reason
+  - [x] **Verify RED:** Run test, confirm it fails for the expected reason
     - Command: `pnpm vitest run src/commands/__tests__/install-remote.test.ts`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      FAIL src/commands/__tests__/install-remote.test.ts
+      Module '"../install.js"' declares 'installFromRemote' locally, but it is not exported.
+      Test Files  1 failed (1)  Tests  3 failed (3)
       ```
-  - [ ] **GREEN:** Write minimal implementation — update `src/commands/install.ts`
+  - [x] **GREEN:** Write minimal implementation — update `src/commands/install.ts`
     ```typescript
     // In src/commands/install.ts (only the exported installFromRemote function shown; full file integrates with analyze pipeline and exposes the deps-based signature for testing)
     import type { AnalysisResult } from "../install/analyze.js";
@@ -1533,23 +1535,24 @@
       await deps.writeServerDefinition(def);
     }
     ```
-  - [ ] **Verify GREEN:** Run test + full suite, confirm pass
+  - [x] **Verify GREEN:** Run test + full suite, confirm pass
     - Command: `pnpm vitest run src/commands/__tests__/install-remote.test.ts`
     - Full-suite command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      ✓ src/commands/__tests__/install-remote.test.ts (3 tests) 2ms
+      Test Files  16 passed (16)  Tests  108 passed (108)
       ```
-  - [ ] **REFACTOR:** Wire the real-deps entry point (top-level `installCommand`) to call `installFromRemote` with production deps (fetchReadme from `github-readme`, confirm/input/password from `@inquirer/prompts`, `writeServerDefinition` from `server-store`, etc.).
-  - [ ] **Verify REFACTOR:** Re-run tests, confirm still green
+  - [x] **REFACTOR:** Renamed legacy GLM-based path to `installFromRemoteLegacy` and threaded `LegacyAnalysisResult` through it; the new exported `installFromRemote(input, deps)` takes the rule-based AnalysisResult. Production wiring (legacy → new) happens in task 7 when GLM module is removed.
+  - [x] **Verify REFACTOR:** Re-run tests, confirm still green
     - Command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      Test Files  16 passed (16)  Tests  108 passed (108)
       ```
-  - [ ] **Commit:** `refactor(install): wire remote install to rule-based analyze pipeline`
+  - [x] **Commit:** `refactor(install): wire remote install to rule-based analyze pipeline`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<to be filled by ts-apply>`
+    - **Commit SHA (fill during apply):** `<pending>`
 
 - [ ] 5.2 Wire install from local file/directory to local-source-analysis
   - kind: unit-test

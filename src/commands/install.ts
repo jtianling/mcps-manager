@@ -12,8 +12,9 @@ import {
   isValidInput,
   buildUserMessage,
   analyzeWithGlm,
-  type AnalysisResult,
+  type AnalysisResult as LegacyAnalysisResult,
 } from "../services/glm-client.js";
+import type { AnalysisResult } from "../install/analyze.js";
 import { isUserCancellation } from "../utils/prompt.js";
 
 type SourceType = "remote-url" | "owner-repo" | "local-path" | "local-json" | "manual";
@@ -78,7 +79,7 @@ async function installCommandInner(
   switch (sourceType) {
     case "remote-url":
     case "owner-repo":
-      await installFromRemote(trimmed, options);
+      await installFromRemoteLegacy(trimmed, options);
       break;
     case "local-json":
       await installFromJsonFile(resolve(trimmed), options);
@@ -92,7 +93,58 @@ async function installCommandInner(
   }
 }
 
-async function installFromRemote(
+export interface InstallFromRemoteDeps {
+  analyze: (input: string) => Promise<AnalysisResult>;
+  confirm: (message: string) => Promise<boolean>;
+  askEnvValue: (key: string) => Promise<string>;
+  serverExists: (name: string) => boolean;
+  writeServerDefinition: (def: ServerDefinition) => Promise<void>;
+  fallbackToManual: () => Promise<void>;
+}
+
+export async function installFromRemote(
+  input: string,
+  deps: InstallFromRemoteDeps,
+): Promise<void> {
+  let analysis: AnalysisResult;
+  try {
+    analysis = await deps.analyze(input);
+  } catch {
+    const go = await deps.confirm(
+      `Rule-based analysis could not extract MCP config from ${input}. Configure manually instead?`,
+    );
+    if (go) await deps.fallbackToManual();
+    return;
+  }
+  const trusted = await deps.confirm(`Trust this analysis result?`);
+  if (!trusted) {
+    const go = await deps.confirm("Configure manually instead?");
+    if (go) await deps.fallbackToManual();
+    return;
+  }
+  if (deps.serverExists(analysis.name)) {
+    const overwrite = await deps.confirm(
+      `Server "${analysis.name}" already exists. Overwrite?`,
+    );
+    if (!overwrite) return;
+  }
+  const env: Record<string, string> = {};
+  for (const k of analysis.requiredEnvVars) env[k] = await deps.askEnvValue(k);
+  const base = analysis.default;
+  const merged: DefaultConfig =
+    base.transport === "stdio"
+      ? ({ ...base, env: { ...base.env, ...env } } satisfies StdioConfig)
+      : base;
+  const def: ServerDefinition = {
+    name: analysis.name,
+    source: input,
+    default: merged,
+    overrides: {},
+  };
+  await deps.writeServerDefinition(def);
+}
+
+async function installFromRemoteLegacy(
   urlInput: string,
   options: { force?: boolean },
 ): Promise<void> {
@@ -106,7 +158,7 @@ async function installFromRemote(
   const config = await readGlobalConfig();
 
   console.log("Analyzing documentation with GLM5...");
-  let analysis: AnalysisResult;
+  let analysis: LegacyAnalysisResult;
   try {
     const userMessage = buildUserMessage(urlInput);
     analysis = await analyzeWithGlm(config, userMessage);
@@ -374,7 +426,7 @@ async function saveWithConflictCheck(
   console.log(`Server "${definition.name}" installed to central repository.`);
 }
 
-function displayAnalysisResult(result: AnalysisResult, source: string): void {
+function displayAnalysisResult(result: LegacyAnalysisResult, source: string): void {
   console.log("\n--- Analysis Result ---");
   console.log(`Name: ${result.name}`);
   console.log(`Source: ${source}`);
