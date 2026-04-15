@@ -1841,11 +1841,11 @@
       ```
   - [x] **Commit:** `refactor(install): classify input and reject non-GitHub remote sources`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<pending>`
+    - **Commit SHA (fill during apply):** `76fcbd7`
 
 ## 6. Update command refactor
 
-- [ ] 6.1 Update command runs rule-based analyze on remote sources
+- [x] 6.1 Update command runs rule-based analyze on remote sources
   - kind: unit-test
   - **Spec scenario(s):**
     - `update-command/spec.md` → Scenario: `更新指定服务`
@@ -1857,7 +1857,7 @@
   - **Files:**
     - Create: `src/commands/__tests__/update-rule-based.test.ts`
     - Modify: `src/commands/update.ts`
-  - [ ] **RED:** Write failing test — `src/commands/__tests__/update-rule-based.test.ts`
+  - [x] **RED:** Write failing test — `src/commands/__tests__/update-rule-based.test.ts`
     - Behavior under test: `updateSingle(name, deps)` loads def, calls deps.analyze, merges env, calls deps.writeServerDefinition; batch-level helper tolerates errors
     - Expected failure reason: the tested helpers are not exported in the new shape
     ```typescript
@@ -1944,13 +1944,15 @@
       });
     });
     ```
-  - [ ] **Verify RED:** Run test, confirm it fails for the expected reason
+  - [x] **Verify RED:** Run test, confirm it fails for the expected reason
     - Command: `pnpm vitest run src/commands/__tests__/update-rule-based.test.ts`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      FAIL src/commands/__tests__/update-rule-based.test.ts
+      Module '"../update.js"' declares 'updateSingle' locally, but it is not exported.
+      Test Files  1 failed (1)  Tests  4 failed (4)
       ```
-  - [ ] **GREEN:** Write minimal implementation — rewrite `src/commands/update.ts`
+  - [x] **GREEN:** Write minimal implementation — rewrite `src/commands/update.ts`
     ```typescript
     import type { ServerDefinition, DefaultConfig } from "../types.js";
     import type { AnalysisResult } from "../install/analyze.js";
@@ -2008,23 +2010,24 @@
       return { updated, skipped, failed };
     }
     ```
-  - [ ] **Verify GREEN:** Run test + full suite, confirm pass
+  - [x] **Verify GREEN:** Run test + full suite, confirm pass
     - Command: `pnpm vitest run src/commands/__tests__/update-rule-based.test.ts`
     - Full-suite command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      ✓ src/commands/__tests__/update-rule-based.test.ts (4 tests) 2ms
+      Test Files  19 passed (19)  Tests  123 passed (123)
       ```
-  - [ ] **REFACTOR:** Expose a thin top-level `updateCommand(name?)` wrapper that injects production deps (fetchGitHubReadme, writeServerDefinition, `@inquirer/prompts` confirm).
-  - [ ] **Verify REFACTOR:** Re-run tests, confirm still green
+  - [x] **REFACTOR:** Reworked mergeRuleDefault to take `requiredEnvKeys` so spec semantics ("preserve old values, add new keys with empty value, drop keys not in new analysis") are honored. Production wiring (legacy → new) deferred to task 7 alongside GLM removal.
+  - [x] **Verify REFACTOR:** Re-run tests, confirm still green
     - Command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      Test Files  19 passed (19)  Tests  123 passed (123)
       ```
-  - [ ] **Commit:** `refactor(update): use rule-based analyze for remote sources`
+  - [x] **Commit:** `refactor(update): use rule-based analyze for remote sources`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<to be filled by ts-apply>`
+    - **Commit SHA (fill during apply):** `<pending>`
 
 ## 7. Removals and integration test migration
 

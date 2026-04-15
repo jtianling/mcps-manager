@@ -25,13 +25,81 @@ export async function updateCommand(name?: string): Promise<void> {
 
 async function updateCommandInner(name?: string): Promise<void> {
   if (name) {
-    await updateSingle(name);
+    await updateSingleLegacy(name);
   } else {
-    await updateAll();
+    await updateAllLegacy();
   }
 }
 
-async function updateSingle(name: string): Promise<void> {
+import type { AnalysisResult as RuleAnalysisResult } from "../install/analyze.js";
+
+export interface UpdateSingleDeps {
+  serverExists: (name: string) => boolean;
+  readServerDefinition: (name: string) => Promise<ServerDefinition | undefined>;
+  analyze: (source: string) => Promise<RuleAnalysisResult>;
+  confirm: (message: string) => Promise<boolean>;
+  writeServerDefinition: (def: ServerDefinition) => Promise<void>;
+}
+
+export async function updateSingle(
+  name: string,
+  deps: UpdateSingleDeps,
+): Promise<"updated" | "skipped" | "missing" | "no-source"> {
+  if (!deps.serverExists(name)) return "missing";
+  const def = await deps.readServerDefinition(name);
+  if (!def) return "missing";
+  if (!def.source || def.source === "local") return "no-source";
+
+  const analysis = await deps.analyze(def.source);
+  const merged = mergeRuleDefault(def.default, analysis.default, analysis.requiredEnvVars);
+  if (JSON.stringify(def.default) === JSON.stringify(merged)) return "skipped";
+  const proceed = await deps.confirm(`Update "${name}"?`);
+  if (!proceed) return "skipped";
+  await deps.writeServerDefinition({ ...def, default: merged });
+  return "updated";
+}
+
+function mergeRuleDefault(
+  oldD: DefaultConfig,
+  newD: DefaultConfig,
+  requiredEnvKeys: readonly string[],
+): DefaultConfig {
+  if (oldD.transport !== "stdio" || newD.transport !== "stdio") return newD;
+  const mergedEnv: Record<string, string> = {};
+  for (const k of requiredEnvKeys) {
+    mergedEnv[k] = oldD.env[k] ?? "";
+  }
+  for (const [k, v] of Object.entries(newD.env)) {
+    if (!(k in mergedEnv)) mergedEnv[k] = v;
+  }
+  return { ...newD, env: mergedEnv };
+}
+
+export interface UpdateAllDeps {
+  listServerDefinitions: () => Promise<readonly ServerDefinition[]>;
+  updateSingle: (name: string) => Promise<"updated" | "skipped" | "missing" | "no-source">;
+}
+
+export async function updateAll(
+  deps: UpdateAllDeps,
+): Promise<{ updated: number; skipped: number; failed: number }> {
+  const all = await deps.listServerDefinitions();
+  let updated = 0,
+    skipped = 0,
+    failed = 0;
+  for (const d of all) {
+    try {
+      const res = await deps.updateSingle(d.name);
+      if (res === "updated") updated++;
+      else skipped++;
+    } catch {
+      failed++;
+    }
+  }
+  return { updated, skipped, failed };
+}
+
+async function updateSingleLegacy(name: string): Promise<void> {
   if (!serverExists(name)) {
     console.error(`Error: Server "${name}" not found in central repository.`);
     process.exitCode = 1;
@@ -61,7 +129,7 @@ async function updateSingle(name: string): Promise<void> {
   }
 }
 
-async function updateAll(): Promise<void> {
+async function updateAllLegacy(): Promise<void> {
   const servers = await listServerDefinitions();
   if (servers.length === 0) {
     console.log(
