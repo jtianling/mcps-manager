@@ -104,3 +104,4 @@ coverage/
 .agents/
 .codex/
 .gemini/
+.e2e-test/
