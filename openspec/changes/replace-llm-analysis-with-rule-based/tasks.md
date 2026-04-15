@@ -2172,7 +2172,8 @@
 | `local-source-analysis` | `无任何已知形状` | Task 4.1 | `src/install/__tests__/local-json.test.ts:46` |
 | `local-source-analysis` | `多 server 交互式选择` | Task 4.3 | `src/install/__tests__/select-servers.test.ts:23` |
 | `local-source-analysis` | `同名冲突` | Task 5.2 | `src/commands/__tests__/install-local.test.ts:38` |
-| `local-source-analysis` | `source 字段` | Task 4.1, 5.2 | `src/install/__tests__/local-json.test.ts:52` |
+| `local-source-analysis` | `source 字段` (本地目录) | Task 5.2 | `src/commands/__tests__/install-local.test.ts:25` |
+| `local-source-analysis` | `source 字段` (本地 JSON) | Task 4.1, 5.2 | `src/install/__tests__/local-json.test.ts:52` |
 | `server-management` | `使用 GitHub 简写添加` | Task 5.1, 7.2 | `src/commands/__tests__/install-remote.test.ts:14` |
 | `server-management` | `使用完整 GitHub URL 添加` | Task 5.3 | `src/commands/__tests__/install-dispatch.test.ts:13` |
 | `server-management` | `非 GitHub URL 拒绝` | Task 5.3 | `src/commands/__tests__/install-dispatch.test.ts:16` |
@@ -2203,4 +2204,4 @@
 | `project-operations` | `remove 命令中按 Ctrl-C` | Task 7.1, 7.2 | existing code path |
 | `project-operations` | `sync 命令中按 Ctrl-C` | Task 7.1, 7.2 | existing code path |
 
-**Coverage:** 59 of 59 scenarios covered (100% required).
+**Coverage:** 60 of 60 scenarios covered (100% required).
