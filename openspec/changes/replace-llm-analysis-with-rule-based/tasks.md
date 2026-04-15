@@ -728,9 +728,9 @@
       ```
   - [x] **Commit:** `feat(install): parse mcpServers and bare JSON blocks from README`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<pending>`
+    - **Commit SHA (fill during apply):** `4ef1e26`
 
-- [ ] 3.3 Implement manifest fallback (P4) + analyze orchestration
+- [x] 3.3 Implement manifest fallback (P4) + analyze orchestration
   - kind: unit-test
   - **Spec scenario(s):**
     - `readme-analysis/spec.md` → Scenario: `package.json 存在`
@@ -742,7 +742,7 @@
     - Create: `src/install/__tests__/analyze.test.ts`
     - Create: `src/install/analyze.ts`
     - Create: `src/install/manifest-remote.ts`
-  - [ ] **RED:** Write failing test — `src/install/__tests__/analyze.test.ts`
+  - [x] **RED:** Write failing test — `src/install/__tests__/analyze.test.ts`
     - Behavior under test: analyzeFromGitHub merges P1 (authoritative) + P2 (env补充), falls back to P3 → P4 → throws
     - Expected failure reason: analyze module does not exist
     ```typescript
@@ -847,13 +847,15 @@
       });
     });
     ```
-  - [ ] **Verify RED:** Run test, confirm it fails for the expected reason
+  - [x] **Verify RED:** Run test, confirm it fails for the expected reason
     - Command: `pnpm vitest run src/install/__tests__/analyze.test.ts`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      FAIL src/install/__tests__/analyze.test.ts
+      Cannot find module '../analyze.js'
+      Test Files  1 failed (1)
       ```
-  - [ ] **GREEN:** Write minimal implementation — `src/install/analyze.ts` and `src/install/manifest-remote.ts`
+  - [x] **GREEN:** Write minimal implementation — `src/install/analyze.ts` and `src/install/manifest-remote.ts`
     ```typescript
     // src/install/manifest-remote.ts
     export async function fetchManifestDefault(
@@ -976,23 +978,24 @@
       return [...set];
     }
     ```
-  - [ ] **Verify GREEN:** Run test + full suite, confirm pass
+  - [x] **Verify GREEN:** Run test + full suite, confirm pass
     - Command: `pnpm vitest run src/install/__tests__/analyze.test.ts`
     - Full-suite command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      ✓ src/install/__tests__/analyze.test.ts (6 tests)
+      Test Files  12 passed (12)  Tests  93 passed (93)
       ```
-  - [ ] **REFACTOR:** None — already minimal
-  - [ ] **Verify REFACTOR:** Re-run tests, confirm still green
+  - [x] **REFACTOR:** Loosened FENCE_RE in parse-json-block.ts to match any fenced block (not just lang=json). Initial restrictive regex caused empty match between two adjacent fenced blocks of different langs (sh + json), masking the json content. Loose regex + JSON.parse-with-catch is the right approach.
+  - [x] **Verify REFACTOR:** Re-run tests, confirm still green
     - Command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      Test Files  12 passed (12)  Tests  93 passed (93)
       ```
-  - [ ] **Commit:** `feat(install): analyze pipeline with manifest fallback and P1/P2 merge`
+  - [x] **Commit:** `feat(install): analyze pipeline with manifest fallback and P1/P2 merge`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<to be filled by ts-apply>`
+    - **Commit SHA (fill during apply):** `<pending>`
 
 ## 4. Local source analysis
 

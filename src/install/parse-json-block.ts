@@ -9,7 +9,7 @@ export interface JsonBlockCandidate {
   readonly envKeys: readonly string[];
 }
 
-const FENCE_RE = /```(?:json|jsonc|json5)?\s*\n([\s\S]*?)```/g;
+const FENCE_RE = /```[^\n]*\n([\s\S]*?)```/g;
 
 export function parseJsonBlocks(markdown: string): JsonBlockCandidate[] {
   const out: JsonBlockCandidate[] = [];
