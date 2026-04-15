@@ -121,11 +121,11 @@
       ```
   - [x] **Commit:** `feat(install): add shell tokenizer for claude mcp add parsing`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<pending>`
+    - **Commit SHA (fill during apply):** `abdb08c`
 
 ## 2. GitHub source normalization and README fetch
 
-- [ ] 2.1 Implement source normalization + README fetch chain
+- [x] 2.1 Implement source normalization + README fetch chain
   - kind: unit-test
   - **Spec scenario(s):**
     - `readme-analysis/spec.md` → Scenario: `fetch README.md 成功`
@@ -138,7 +138,7 @@
     - Create: `src/install/source.ts`
     - Create: `src/install/__tests__/github-readme.test.ts`
     - Create: `src/install/github-readme.ts`
-  - [ ] **RED:** Write failing test — `src/install/__tests__/source.test.ts` and `src/install/__tests__/github-readme.test.ts`
+  - [x] **RED:** Write failing test — `src/install/__tests__/source.test.ts` and `src/install/__tests__/github-readme.test.ts`
     - Behavior under test: source.ts normalizes owner/repo forms; github-readme.ts fetches README with raw URL first, falls back to lowercase, then throws on all failures
     - Expected failure reason: modules do not exist yet
     ```typescript
@@ -238,13 +238,17 @@
       });
     });
     ```
-  - [ ] **Verify RED:** Run test, confirm it fails for the expected reason
+  - [x] **Verify RED:** Run test, confirm it fails for the expected reason
     - Command: `pnpm vitest run src/install/__tests__/source.test.ts src/install/__tests__/github-readme.test.ts`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      FAIL src/install/__tests__/source.test.ts
+        Error: Cannot find module '../source.js' imported from src/install/__tests__/source.test.ts
+      FAIL src/install/__tests__/github-readme.test.ts
+        Error: Cannot find module '../github-readme.js'
+      Test Files  2 failed (2)
       ```
-  - [ ] **GREEN:** Write minimal implementation — `src/install/source.ts` and `src/install/github-readme.ts`
+  - [x] **GREEN:** Write minimal implementation — `src/install/source.ts` and `src/install/github-readme.ts`
     ```typescript
     // src/install/source.ts
     export interface GitHubRef { readonly owner: string; readonly repo: string }
@@ -329,23 +333,28 @@
       throw new Error(`Could not fetch README for ${ref.owner}/${ref.repo}`);
     }
     ```
-  - [ ] **Verify GREEN:** Run test + full suite, confirm pass
+  - [x] **Verify GREEN:** Run test + full suite, confirm pass
     - Command: `pnpm vitest run src/install/__tests__/source.test.ts src/install/__tests__/github-readme.test.ts`
     - Full-suite command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      ✓ src/install/__tests__/source.test.ts (5 tests) 1ms
+      ✓ src/install/__tests__/github-readme.test.ts (4 tests) 2ms
+      Test Files  2 passed (2)  Tests  9 passed (9)
+      Full suite: Test Files 9 passed (9), Tests 76 passed (76)
       ```
-  - [ ] **REFACTOR:** None — already minimal
-  - [ ] **Verify REFACTOR:** Re-run tests, confirm still green
+  - [x] **REFACTOR:** None — already minimal
+  - [x] **Verify REFACTOR:** Re-run tests, confirm still green
     - Command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      Test Files  9 passed (9)
+      Tests  76 passed (76)
+      Duration  192ms
       ```
-  - [ ] **Commit:** `feat(install): add github source parsing and README fetch chain`
+  - [x] **Commit:** `feat(install): add github source parsing and README fetch chain`
     - Staging order: test files BEFORE production files
-    - **Commit SHA (fill during apply):** `<to be filled by ts-apply>`
+    - **Commit SHA (fill during apply):** `<pending>`
 
 - [ ] 2.2 Runtime verification: HEAD ref compatibility + gh降级 path
   - kind: manual-verify
