@@ -552,9 +552,9 @@
       ```
   - [x] **Commit:** `feat(install): parse claude mcp add CLI lines from README`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<pending>`
+    - **Commit SHA (fill during apply):** `180de9a`
 
-- [ ] 3.2 Implement JSON block parsers (P2 mcpServers + P3 bare shape)
+- [x] 3.2 Implement JSON block parsers (P2 mcpServers + P3 bare shape)
   - kind: unit-test
   - **Spec scenario(s):**
     - `readme-analysis/spec.md` → Scenario: `单 server 的 mcpServers block`
@@ -565,7 +565,7 @@
   - **Files:**
     - Create: `src/install/__tests__/parse-json-block.test.ts`
     - Create: `src/install/parse-json-block.ts`
-  - [ ] **RED:** Write failing test — `src/install/__tests__/parse-json-block.test.ts`
+  - [x] **RED:** Write failing test — `src/install/__tests__/parse-json-block.test.ts`
     - Behavior under test: scan fenced JSON code blocks, classify as mcpServers-shape or bare-shape, return normalized ServerCandidate list
     - Expected failure reason: module does not exist
     ```typescript
@@ -632,13 +632,15 @@
       });
     });
     ```
-  - [ ] **Verify RED:** Run test, confirm it fails for the expected reason
+  - [x] **Verify RED:** Run test, confirm it fails for the expected reason
     - Command: `pnpm vitest run src/install/__tests__/parse-json-block.test.ts`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      FAIL src/install/__tests__/parse-json-block.test.ts
+      Cannot find module '../parse-json-block.js'
+      Test Files  1 failed (1)
       ```
-  - [ ] **GREEN:** Write minimal implementation — `src/install/parse-json-block.ts`
+  - [x] **GREEN:** Write minimal implementation — `src/install/parse-json-block.ts`
     ```typescript
     export interface JsonBlockCandidate {
       readonly source: "mcpServers" | "bare";
@@ -708,23 +710,25 @@
       return undefined;
     }
     ```
-  - [ ] **Verify GREEN:** Run test + full suite, confirm pass
+  - [x] **Verify GREEN:** Run test + full suite, confirm pass
     - Command: `pnpm vitest run src/install/__tests__/parse-json-block.test.ts`
     - Full-suite command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      ✓ src/install/__tests__/parse-json-block.test.ts (6 tests) 2ms
+      Test Files  1 passed (1)  Tests  6 passed (6)
+      Full suite: Test Files 11 passed (11), Tests 87 passed (87)
       ```
-  - [ ] **REFACTOR:** None — already minimal
-  - [ ] **Verify REFACTOR:** Re-run tests, confirm still green
+  - [x] **REFACTOR:** None — already minimal
+  - [x] **Verify REFACTOR:** Re-run tests, confirm still green
     - Command: `pnpm test`
     - **Observed output (fill during apply):**
       ```
-      <to be filled by ts-apply>
+      Test Files  11 passed (11)  Tests  87 passed (87)
       ```
-  - [ ] **Commit:** `feat(install): parse mcpServers and bare JSON blocks from README`
+  - [x] **Commit:** `feat(install): parse mcpServers and bare JSON blocks from README`
     - Staging order: test file BEFORE production file
-    - **Commit SHA (fill during apply):** `<to be filled by ts-apply>`
+    - **Commit SHA (fill during apply):** `<pending>`
 
 - [ ] 3.3 Implement manifest fallback (P4) + analyze orchestration
   - kind: unit-test
