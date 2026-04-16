@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { dirname } from "node:path";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 import type { AgentAdapter, DefaultConfig } from "../types.js";
-import { buildEnvArgs, parseEnvArgs, resolveEnvInArgs } from "./env-args.js";
+import { parseEnvArgs, resolveEnvInArgs } from "./env-args.js";
 
 function toAgentFormat(config: DefaultConfig): Record<string, unknown> {
   if (config.transport === "stdio") {
@@ -12,22 +12,33 @@ function toAgentFormat(config: DefaultConfig): Record<string, unknown> {
       config.args,
       config.env,
     );
-    const envArgs = buildEnvArgs(remainingEnv);
-    if (envArgs.length > 0) {
-      return {
-        command: "env",
-        args: [...envArgs, config.command, ...resolvedArgs],
-      };
-    }
-    return {
+    const nativeConfig: Record<string, unknown> = {
       command: config.command,
       args: resolvedArgs,
     };
+    if (Object.keys(remainingEnv).length > 0) {
+      nativeConfig["env"] = { ...remainingEnv };
+    }
+    return nativeConfig;
   }
   return {
     url: config.url,
     http_headers: { ...config.headers },
   };
+}
+
+function readEnvField(
+  value: unknown,
+): Readonly<Record<string, string>> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const env: Record<string, string> = {};
+  for (const [key, rawValue] of Object.entries(value)) {
+    env[key] = String(rawValue);
+  }
+  return env;
 }
 
 function fromAgentFormat(
@@ -37,10 +48,10 @@ function fromAgentFormat(
   if (raw["command"]) {
     const command = raw["command"] as string;
     const rawArgs = (raw["args"] as string[]) ?? [];
-    const legacyEnv = raw["env"] as Record<string, string> | undefined;
+    const nativeEnv = readEnvField(raw["env"]) ?? readEnvField(raw["environment"]);
 
-    if (legacyEnv && Object.keys(legacyEnv).length > 0) {
-      return { transport: "stdio", command, args: rawArgs, env: legacyEnv };
+    if (nativeEnv !== undefined) {
+      return { transport: "stdio", command, args: rawArgs, env: nativeEnv };
     }
 
     if (command === "env") {
