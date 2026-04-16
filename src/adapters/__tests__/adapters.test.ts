@@ -187,6 +187,47 @@ describe("Codex Adapter", () => {
     const has = await codexAdapter.has(tmpDir, "brave-search");
     expect(has).toBe(false);
   });
+
+  it("converts HTTP config to Codex StreamableHttp format", () => {
+    const result = codexAdapter.toAgentFormat(httpConfig);
+    expect(result).toEqual({
+      url: "https://example.com/mcp",
+      http_headers: { Authorization: "Bearer test-token" },
+    });
+    expect(result).not.toHaveProperty("headers");
+  });
+
+  it("converts HTTP config from Codex StreamableHttp format", () => {
+    const result = codexAdapter.fromAgentFormat("my-mcp", {
+      url: "https://example.com/mcp",
+      http_headers: { Authorization: "Bearer test-token" },
+    });
+    expect(result).toEqual(httpConfig);
+  });
+
+  it("round-trips HTTP config through Codex agent format", () => {
+    const raw = codexAdapter.toAgentFormat(httpConfig);
+    const result = codexAdapter.fromAgentFormat(
+      "my-mcp",
+      raw as Record<string, unknown>,
+    );
+    expect(raw).toEqual({
+      url: "https://example.com/mcp",
+      http_headers: { Authorization: "Bearer test-token" },
+    });
+    expect(result).toEqual(httpConfig);
+  });
+
+  it("writes HTTP config using http_headers in TOML", async () => {
+    await codexAdapter.write(tmpDir, "my-mcp", httpConfig);
+
+    const raw = await readFile(join(tmpDir, ".codex", "config.toml"), "utf-8");
+
+    expect(raw).toContain("[mcp_servers.my-mcp]");
+    expect(raw).toContain("http_headers");
+    expect(raw).not.toContain("[mcp_servers.my-mcp.headers]");
+    expect(raw).not.toContain("\nheaders =");
+  });
 });
 
 describe("Gemini CLI Adapter", () => {

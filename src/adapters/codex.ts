@@ -26,7 +26,7 @@ function toAgentFormat(config: DefaultConfig): Record<string, unknown> {
   }
   return {
     url: config.url,
-    headers: { ...config.headers },
+    http_headers: { ...config.headers },
   };
 }
 
@@ -59,7 +59,7 @@ function fromAgentFormat(
     return {
       transport: "http",
       url: raw["url"] as string,
-      headers: (raw["headers"] as Record<string, string>) ?? {},
+      headers: (raw["http_headers"] as Record<string, string>) ?? {},
     };
   }
   return undefined;
