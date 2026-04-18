@@ -1,10 +1,9 @@
 import { program } from "commander";
 import { installCommand } from "./commands/install.js";
 import { uninstallCommand } from "./commands/uninstall.js";
-import { initCommand } from "./commands/init.js";
+import { deployCommand } from "./commands/deploy.js";
 import { addCommand } from "./commands/add.js";
 import { removeCommand } from "./commands/remove.js";
-import { syncCommand } from "./commands/sync.js";
 import { listCommand } from "./commands/list.js";
 import { updateCommand } from "./commands/update.js";
 
@@ -34,9 +33,10 @@ program
   .action((name?: string) => updateCommand(name));
 
 program
-  .command("init")
-  .description("Initialize MCP servers for current project")
-  .action(() => initCommand());
+  .command("deploy")
+  .description("Deploy MCP servers to current project")
+  .option("-r, --refresh", "Sync central repository changes to project agent configs")
+  .action((options: { refresh?: boolean }) => deployCommand(options));
 
 program
   .command("add <server-name>")
@@ -47,11 +47,6 @@ program
   .command("remove <server-name>")
   .description("Remove a server from current project agent configs")
   .action((serverName: string) => removeCommand(serverName));
-
-program
-  .command("sync")
-  .description("Sync central repository changes to project agent configs")
-  .action(() => syncCommand());
 
 program
   .command("list")

@@ -28,8 +28,8 @@ Central Repository          Agent Configs
 - **Rule-based README parsing** - Provide a GitHub URL or `owner/repo` and `mcpsmgr` extracts the config from `claude mcp add` lines or `mcpServers` JSON blocks in the README
 - **Local source support** - Install from a `*.json` file (any agent's MCP config shape) or from a project directory (auto-detects `package.json` / `pyproject.toml`)
 - **Per-agent overrides** - Customize server config for specific agents when needed
-- **Project-level init** - Deploy selected servers to detected agents in any project
-- **Sync** - Push central repository updates to all agent configs
+- **Project-level deploy** - Deploy selected servers to detected agents in any project
+- **Refresh** - Push central repository updates to all agent configs
 
 ## Installation
 
@@ -49,15 +49,15 @@ mcpsmgr install https://github.com/anthropics/some-repo   # GitHub URL
 mcpsmgr install ./my-mcp.json                             # Local JSON config
 mcpsmgr install ~/workspace/my-mcp-server                 # Local project dir
 
-# 2. Initialize a project (deploy servers to agents)
+# 2. Deploy servers to agents in current project
 cd your-project
-mcpsmgr init
+mcpsmgr deploy
 
 # 3. Add a specific server to the current project
 mcpsmgr add my-server
 
 # 4. Sync central changes to project agents
-mcpsmgr sync
+mcpsmgr deploy --refresh
 
 # 5. Update installed servers from their sources
 mcpsmgr update
@@ -72,10 +72,10 @@ mcpsmgr update
 | `mcpsmgr update [name]` | | Update installed servers by re-analyzing their source documentation |
 | `mcpsmgr list` | | List all servers in central repository |
 | `mcpsmgr list --deployed` | | List MCP servers across all agents in current project |
-| `mcpsmgr init` | | Deploy servers to agents in current project |
+| `mcpsmgr deploy` | | Deploy servers to agents in current project |
+| `mcpsmgr deploy --refresh` | | Sync central repository changes to project |
 | `mcpsmgr add <server>` | | Add a central server to current project |
 | `mcpsmgr remove <server>` | | Remove a server from current project |
-| `mcpsmgr sync` | | Sync central repository changes to project |
 
 ## Supported Agents
 

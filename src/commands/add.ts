@@ -35,7 +35,7 @@ async function addCommandInner(serverName: string): Promise<void> {
   const detected = detectAgents(projectDir);
   if (detected.length === 0) {
     console.log(
-      "No agent config files detected in this project. Use \"mcpsmgr init\" first.",
+      "No agent config files detected in this project. Use \"mcpsmgr deploy\" first.",
     );
     return;
   }

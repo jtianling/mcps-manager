@@ -74,7 +74,7 @@ async function listDeployed(): Promise<void> {
 
   if (Object.keys(matrix).length === 0) {
     console.log(
-      'No MCP servers found in any agent configuration. Use "mcpsmgr init" to get started.',
+      'No MCP servers found in any agent configuration. Use "mcpsmgr deploy" to get started.',
     );
     return;
   }

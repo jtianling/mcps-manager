@@ -1,7 +1,5 @@
-## Purpose
+## MODIFIED Requirements
 
-提供项目级的 MCP 服务管理操作, 包括部署, 添加, 移除, 刷新同步和状态查看.
-## Requirements
 ### Requirement: 项目初始化
 
 系统 SHALL 支持 `mcpsmgr deploy` 命令, 在当前项目中交互式选择 agent 和 MCP 服务.
@@ -26,44 +24,6 @@
 - **WHEN** 用户执行 `mcpsmgr deploy` 但 `~/.mcps-manager/servers/` 下没有任何服务
 - **THEN** 系统提示中央仓库为空, 建议先使用 `mcpsmgr install` 添加服务
 
-### Requirement: 项目添加服务
-
-系统 SHALL 支持 `mcpsmgr add <server-name>` 命令, 将中央仓库中的服务添加到当前项目的 agent 配置中.
-
-#### Scenario: 添加到已检测的 agent
-
-- **WHEN** 用户执行 `mcpsmgr add context7`
-- **THEN** 系统自动检测项目中已存在的 agent 配置文件, 展示列表供用户勾选 (其中 `isGlobal` 为 `true` 的 agent SHALL 默认不选中), 将服务写入勾选的 agent 配置文件
-
-#### Scenario: 服务不存在于中央仓库
-
-- **WHEN** 用户执行 `mcpsmgr add nonexistent`
-- **THEN** 系统报错, 提示服务不存在于中央仓库
-
-#### Scenario: 部分 agent 同名冲突
-
-- **WHEN** 添加时某些 agent 配置文件中已存在同名服务
-- **THEN** 系统对冲突的 agent 报告跳过, 对无冲突的 agent 正常写入
-
-### Requirement: 项目移除服务
-
-系统 SHALL 支持 `mcpsmgr remove <server-name>` 命令, 从当前项目的 agent 配置中移除单个 MCP 服务配置.
-
-#### Scenario: 从多个 agent 移除
-
-- **WHEN** 用户执行 `mcpsmgr remove brave-search`
-- **THEN** 系统列出包含该服务的所有 agent 配置, 供用户勾选要移除的 (其中 `isGlobal` 为 `true` 的 agent SHALL 默认不选中), 从勾选的 agent 配置文件中删除该服务条目, 保留文件中的其他内容. 未勾选的 agent SHALL NOT 被删除任何 MCP 配置
-
-#### Scenario: 无 agent 包含该服务
-
-- **WHEN** 用户执行 `mcpsmgr remove nonexistent` 但没有任何 agent 配置包含该服务
-- **THEN** 系统提示未在任何 agent 配置中找到该服务
-
-#### Scenario: 取消选中 agent 不删除 MCP
-
-- **WHEN** 用户在 remove 交互中取消选中某个 agent
-- **THEN** 系统 SHALL NOT 删除该 agent 中的任何 MCP 配置, 仅跳过该 agent
-
 ### Requirement: 同步中央仓库变更
 
 系统 SHALL 支持 `mcpsmgr deploy --refresh` 命令, 将中央仓库的服务配置同步到当前项目的 agent 配置文件.
@@ -77,20 +37,6 @@
 
 - **WHEN** sync 过程中发现某个 agent 配置中的服务名与中央仓库同名但非 mcpsmgr 管理 (用户手动添加的)
 - **THEN** 系统报告冲突, 跳过该服务在该 agent 的同步
-
-### Requirement: 列出项目 MCP 状态
-
-系统 SHALL 支持 `mcpsmgr list --deployed` 命令, 展示当前项目各 agent 的 MCP 服务状态矩阵.
-
-#### Scenario: 状态矩阵展示
-
-- **WHEN** 用户在项目目录执行 `mcpsmgr list --deployed`
-- **THEN** 系统扫描所有 agent 的实际配置文件, 解析出已配置的 MCP 服务, 以表格形式展示 (行: 服务名, 列: agent 名, 值: 是否存在及 transport 类型)
-
-#### Scenario: 无 agent 配置文件
-
-- **WHEN** 项目中没有任何 agent 配置文件且用户执行 `mcpsmgr list --deployed`
-- **THEN** 系统提示未检测到任何 agent 配置, 建议执行 `mcpsmgr deploy`
 
 ### Requirement: 交互中断优雅退出
 
@@ -139,3 +85,23 @@
 - **WHEN** 用户执行 `mcpsmgr deploy` 但 `~/.mcps-manager/servers/` 下没有任何服务
 - **THEN** 系统提示中央仓库为空, 建议先使用 `mcpsmgr install` 添加服务
 
+### Requirement: 列出项目 MCP 状态
+
+系统 SHALL 支持 `mcpsmgr list --deployed` 命令, 展示当前项目各 agent 的 MCP 服务状态矩阵.
+
+#### Scenario: 状态矩阵展示
+
+- **WHEN** 用户在项目目录执行 `mcpsmgr list --deployed`
+- **THEN** 系统扫描所有 agent 的实际配置文件, 解析出已配置的 MCP 服务, 以表格形式展示 (行: 服务名, 列: agent 名, 值: 是否存在及 transport 类型)
+
+#### Scenario: 无 agent 配置文件
+
+- **WHEN** 项目中没有任何 agent 配置文件且用户执行 `mcpsmgr list --deployed`
+- **THEN** 系统提示未检测到任何 agent 配置, 建议执行 `mcpsmgr deploy`
+
+## REMOVED Requirements
+
+### Requirement: 项目移除服务提示
+
+**Reason**: 原 requirement 中引用 `mcpsmgr init`, 功能已合并到 "项目初始化空仓库提示" 的 MODIFIED 版本中
+**Migration**: 使用 "项目初始化空仓库提示" requirement

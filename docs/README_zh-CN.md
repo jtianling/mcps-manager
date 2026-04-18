@@ -28,8 +28,8 @@
 - **基于规则的 README 解析** - 提供 GitHub URL 或 `owner/repo`, `mcpsmgr` 从 README 的 `claude mcp add` 命令行或 `mcpServers` JSON 块中抽取配置
 - **本地源支持** - 可从 `*.json` 配置文件 (任何助手的 MCP 配置形状) 或本地项目目录 (自动探测 `package.json` / `pyproject.toml`) 安装
 - **按助手覆盖** - 可针对特定助手自定义服务器配置
-- **项目级初始化** - 将选定的服务器部署到项目中检测到的助手
-- **同步** - 将中央仓库的更新推送到所有助手配置
+- **项目级部署** - 将选定的服务器部署到项目中检测到的助手
+- **刷新同步** - 将中央仓库的更新推送到所有助手配置
 
 ## 安装
 
@@ -49,15 +49,15 @@ mcpsmgr install https://github.com/anthropics/some-repo   # GitHub URL
 mcpsmgr install ./my-mcp.json                             # 本地 JSON 配置
 mcpsmgr install ~/workspace/my-mcp-server                 # 本地项目目录
 
-# 2. 初始化项目 (将服务器部署到助手)
+# 2. 将服务器部署到当前项目的助手
 cd your-project
-mcpsmgr init
+mcpsmgr deploy
 
 # 3. 向当前项目添加特定服务器
 mcpsmgr add my-server
 
 # 4. 将中央仓库的变更同步到项目
-mcpsmgr sync
+mcpsmgr deploy --refresh
 
 # 5. 更新已安装的服务器
 mcpsmgr update
@@ -72,10 +72,10 @@ mcpsmgr update
 | `mcpsmgr update [name]` | | 根据来源文档重新分析并更新已安装的服务器配置 |
 | `mcpsmgr list` | | 列出中央仓库中的所有服务器 |
 | `mcpsmgr list --deployed` | | 列出当前项目中所有助手的 MCP 服务器 |
-| `mcpsmgr init` | | 将服务器部署到当前项目的助手 |
+| `mcpsmgr deploy` | | 将服务器部署到当前项目的助手 |
+| `mcpsmgr deploy --refresh` | | 将中央仓库的变更同步到当前项目 |
 | `mcpsmgr add <server>` | | 将中央仓库的服务器添加到当前项目 |
 | `mcpsmgr remove <server>` | | 从当前项目移除服务器 |
-| `mcpsmgr sync` | | 将中央仓库的变更同步到当前项目 |
 
 ## 支持的助手
 
