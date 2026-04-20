@@ -1,8 +1,8 @@
 import { checkbox } from "@inquirer/prompts";
-import { detectAgents } from "../adapters/index.js";
+import { allAdapters, detectAgents } from "../adapters/index.js";
 import { readServerDefinition, serverExists } from "../utils/server-store.js";
 import { resolveConfig } from "../utils/resolve-config.js";
-import { isUserCancellation } from "../utils/prompt.js";
+import { CHECKBOX_DEFAULTS, isUserCancellation } from "../utils/prompt.js";
 import type { AgentAdapter } from "../types.js";
 
 export async function addCommand(serverName: string): Promise<void> {
@@ -32,21 +32,16 @@ async function addCommandInner(serverName: string): Promise<void> {
     return;
   }
 
-  const detected = detectAgents(projectDir);
-  if (detected.length === 0) {
-    console.log(
-      "No agent config files detected in this project. Use \"mcpsmgr deploy\" first.",
-    );
-    return;
-  }
+  const detectedIds = new Set(detectAgents(projectDir).map((a) => a.id));
 
   const selectedAgents = await checkbox<AgentAdapter>({
     message: `Select agents to add "${serverName}" to:`,
-    choices: detected.map((adapter) => ({
-      name: `${adapter.name}${adapter.isGlobal ? " [global]" : ""}`,
+    choices: allAdapters.map((adapter) => ({
+      name: `${adapter.name}${detectedIds.has(adapter.id) ? " (detected)" : ""}${adapter.isGlobal ? " [global]" : ""}`,
       value: adapter,
-      checked: !adapter.isGlobal,
+      checked: detectedIds.has(adapter.id) && !adapter.isGlobal,
     })),
+    ...CHECKBOX_DEFAULTS,
   });
 
   if (selectedAgents.length === 0) {

@@ -1,3 +1,4 @@
+import { CHECKBOX_DEFAULTS } from "../utils/prompt.js";
 import type { ServerDefinition } from "../types.js";
 
 export interface Choice {
@@ -19,7 +20,7 @@ function describe(d: ServerDefinition): string {
   return d.default.url;
 }
 
-type CheckboxFn = (opts: { message: string; choices: Choice[] }) => Promise<string[]>;
+type CheckboxFn = (opts: { message: string; choices: Choice[]; loop?: boolean; theme?: Record<string, unknown> }) => Promise<string[]>;
 
 export async function selectServers(
   defs: readonly ServerDefinition[],
@@ -29,6 +30,7 @@ export async function selectServers(
   const chosen = await deps.checkbox({
     message: `Select servers to install (${defs.length} found):`,
     choices: buildChoices(defs),
+    ...CHECKBOX_DEFAULTS,
   });
   const set = new Set(chosen);
   return defs.filter((d) => set.has(d.name));

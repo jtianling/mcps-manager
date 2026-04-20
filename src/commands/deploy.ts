@@ -2,7 +2,7 @@ import { checkbox, confirm } from "@inquirer/prompts";
 import { allAdapters, detectAgents } from "../adapters/index.js";
 import { listServerDefinitions } from "../utils/server-store.js";
 import { resolveConfig } from "../utils/resolve-config.js";
-import { isUserCancellation } from "../utils/prompt.js";
+import { CHECKBOX_DEFAULTS, isUserCancellation } from "../utils/prompt.js";
 import type { AgentAdapter } from "../types.js";
 
 export async function deployCommand(options: { refresh?: boolean }): Promise<void> {
@@ -39,6 +39,7 @@ async function deployInner(): Promise<void> {
       value: adapter,
       checked: detectedIds.has(adapter.id) && !adapter.isGlobal,
     })),
+    ...CHECKBOX_DEFAULTS,
   });
 
   if (selectedAgents.length === 0) {
@@ -68,6 +69,7 @@ async function deployInner(): Promise<void> {
       value: s,
       checked: detectedServers.has(s.name),
     })),
+    ...CHECKBOX_DEFAULTS,
   });
 
   const selectedServerNames = new Set(selectedServers.map((s) => s.name));

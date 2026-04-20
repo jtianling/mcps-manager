@@ -9,7 +9,7 @@
 #### Scenario: 交互式初始化
 
 - **WHEN** 用户在项目目录执行 `mcpsmgr deploy`
-- **THEN** 系统自动检测已存在的 agent 配置文件并预选 (其中 `isGlobal` 为 `true` 的 agent SHALL 默认不选中), 展示所有支持的 agent 供用户勾选, 从中央仓库列出所有已保存的 MCP 服务供用户勾选, 展示即将执行的操作预览, 确认后将选中的服务写入选中的 agent 配置文件
+- **THEN** 系统自动检测已存在的 agent 配置文件并预选 (其中 `isGlobal` 为 `true` 的 agent SHALL 默认不选中), 展示所有支持的 agent 供用户勾选, 从中央仓库列出所有已保存的 MCP 服务供用户勾选, 展示即将执行的操作预览, 确认后将选中的服务写入选中的 agent 配置文件. checkbox SHALL 支持 j/k vim 键导航, 且列表到达边界时 SHALL 停止而非循环.
 
 #### Scenario: 服务器选择默认状态基于目标目录检测
 
@@ -30,10 +30,10 @@
 
 系统 SHALL 支持 `mcpsmgr add <server-name>` 命令, 将中央仓库中的服务添加到当前项目的 agent 配置中.
 
-#### Scenario: 添加到已检测的 agent
+#### Scenario: 列出所有已知 agent 供选择
 
 - **WHEN** 用户执行 `mcpsmgr add context7`
-- **THEN** 系统自动检测项目中已存在的 agent 配置文件, 展示列表供用户勾选 (其中 `isGlobal` 为 `true` 的 agent SHALL 默认不选中), 将服务写入勾选的 agent 配置文件
+- **THEN** 系统 SHALL 展示所有已知 agent 的勾选列表 (与 `mcpsmgr deploy` 相同的全集), 对项目目录下配置文件已存在的 agent SHALL 标注 `(detected)` 后缀. 对标注为 `(detected)` 且 `isGlobal` 为 `false` 的 agent SHALL 默认勾选; 其余 (未检测 / 全局) SHALL 默认不勾选但保留可手动勾选的能力. 将服务写入勾选的 agent 配置文件, 如目标 agent 的配置文件不存在则 SHALL 由 adapter 创建. checkbox SHALL 支持 j/k vim 键导航, 且列表到达边界时 SHALL 停止而非循环.
 
 #### Scenario: 服务不存在于中央仓库
 
@@ -45,6 +45,11 @@
 - **WHEN** 添加时某些 agent 配置文件中已存在同名服务
 - **THEN** 系统对冲突的 agent 报告跳过, 对无冲突的 agent 正常写入
 
+#### Scenario: 项目中无任何 agent 配置文件
+
+- **WHEN** 用户在一个从未配置过任何 agent 的项目目录执行 `mcpsmgr add <server>`
+- **THEN** 系统 SHALL 仍展示完整的 agent 勾选列表 (所有条目均不带 `(detected)` 标注, 默认均未勾选), 用户主动勾选后 SHALL 通过 adapter 写入对应 agent, 创建尚不存在的配置文件. 系统 SHALL NOT 因 "未检测到 agent" 而提前返回
+
 ### Requirement: 项目移除服务
 
 系统 SHALL 支持 `mcpsmgr remove <server-name>` 命令, 从当前项目的 agent 配置中移除单个 MCP 服务配置.
@@ -52,7 +57,7 @@
 #### Scenario: 从多个 agent 移除
 
 - **WHEN** 用户执行 `mcpsmgr remove brave-search`
-- **THEN** 系统列出包含该服务的所有 agent 配置, 供用户勾选要移除的 (其中 `isGlobal` 为 `true` 的 agent SHALL 默认不选中), 从勾选的 agent 配置文件中删除该服务条目, 保留文件中的其他内容. 未勾选的 agent SHALL NOT 被删除任何 MCP 配置
+- **THEN** 系统列出包含该服务的所有 agent 配置, 供用户勾选要移除的 (其中 `isGlobal` 为 `true` 的 agent SHALL 默认不选中), 从勾选的 agent 配置文件中删除该服务条目, 保留文件中的其他内容. 未勾选的 agent SHALL NOT 被删除任何 MCP 配置. checkbox SHALL 支持 j/k vim 键导航, 且列表到达边界时 SHALL 停止而非循环.
 
 #### Scenario: 无 agent 包含该服务
 

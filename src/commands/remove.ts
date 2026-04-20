@@ -1,6 +1,6 @@
 import { checkbox } from "@inquirer/prompts";
 import { allAdapters } from "../adapters/index.js";
-import { isUserCancellation } from "../utils/prompt.js";
+import { CHECKBOX_DEFAULTS, isUserCancellation } from "../utils/prompt.js";
 import type { AgentAdapter } from "../types.js";
 
 export async function removeCommand(serverName: string): Promise<void> {
@@ -41,6 +41,7 @@ async function removeCommandInner(serverName: string): Promise<void> {
       value: adapter,
       checked: !adapter.isGlobal,
     })),
+    ...CHECKBOX_DEFAULTS,
   });
 
   if (selectedAgents.length === 0) {

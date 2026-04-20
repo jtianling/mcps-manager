@@ -93,7 +93,7 @@
 #### Scenario: install 指向多 server JSON
 
 - **WHEN** 用户执行 `mcpsmgr install ./claude-code.mcp.json` 且文件中 `mcpServers` 含多个条目
-- **THEN** 系统 SHALL 展示 checkbox 多选 (默认全选), 对选中的每个条目分别写入中央仓库
+- **THEN** 系统 SHALL 展示 checkbox 多选 (默认全选), 对选中的每个条目分别写入中央仓库. checkbox SHALL 支持 j/k vim 键导航, 且列表到达边界时 SHALL 停止而非循环.
 
 #### Scenario: 文件不是合法 JSON
 
