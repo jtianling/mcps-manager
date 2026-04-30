@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import type { StdioConfig, HttpConfig } from "../../types.js";
 import { claudeCodeAdapter } from "../claude-code.js";
 import { codexAdapter } from "../codex.js";
+import { cursorAdapter } from "../cursor.js";
 import { geminiCliAdapter } from "../gemini-cli.js";
 import { opencodeAdapter } from "../opencode.js";
 
@@ -250,6 +251,86 @@ describe("Gemini CLI Adapter", () => {
     const raw = JSON.parse(await readFile(filePath, "utf-8"));
     expect(raw["theme"]).toBe("dark");
     expect(raw["mcpServers"]["brave-search"]).toBeTruthy();
+  });
+});
+
+describe("Cursor Adapter", () => {
+  it("writes and reads stdio config", async () => {
+    await cursorAdapter.write(tmpDir, "brave-search", stdioConfig);
+    const servers = await cursorAdapter.read(tmpDir);
+    expect(servers["brave-search"]).toEqual({
+      command: "env",
+      args: ["BRAVE_API_KEY=test-key", "npx", "-y", "@anthropic/mcp-brave-search"],
+    });
+  });
+
+  it("writes and reads http config", async () => {
+    await cursorAdapter.write(tmpDir, "my-mcp", httpConfig);
+    const servers = await cursorAdapter.read(tmpDir);
+    expect(servers["my-mcp"]).toEqual({
+      url: "https://example.com/mcp",
+      headers: { Authorization: "Bearer test-token" },
+    });
+  });
+
+  it("writes config under .cursor/mcp.json", async () => {
+    await cursorAdapter.write(tmpDir, "my-mcp", httpConfig);
+    const raw = JSON.parse(
+      await readFile(join(tmpDir, ".cursor", "mcp.json"), "utf-8"),
+    );
+    expect(raw["mcpServers"]["my-mcp"]["url"]).toBe(
+      "https://example.com/mcp",
+    );
+  });
+
+  it("preserves other servers on write", async () => {
+    await cursorAdapter.write(tmpDir, "first", stdioConfig);
+    await cursorAdapter.write(tmpDir, "second", httpConfig);
+    const servers = await cursorAdapter.read(tmpDir);
+    expect(Object.keys(servers)).toEqual(["first", "second"]);
+  });
+
+  it("throws on conflict", async () => {
+    await cursorAdapter.write(tmpDir, "brave-search", stdioConfig);
+    await expect(
+      cursorAdapter.write(tmpDir, "brave-search", stdioConfig),
+    ).rejects.toThrow("Conflict");
+  });
+
+  it("removes a server", async () => {
+    await cursorAdapter.write(tmpDir, "brave-search", stdioConfig);
+    await cursorAdapter.remove(tmpDir, "brave-search");
+    const has = await cursorAdapter.has(tmpDir, "brave-search");
+    expect(has).toBe(false);
+  });
+
+  it("substitutes ${VAR} references in args", async () => {
+    await cursorAdapter.write(tmpDir, "jina", stdioConfigWithRef);
+    const servers = await cursorAdapter.read(tmpDir);
+    expect(servers["jina"]).toEqual({
+      command: "npx",
+      args: [
+        "-y",
+        "mcp-remote",
+        "https://mcp.example.com/v1",
+        "--header",
+        "Authorization: Bearer sk-test-123",
+      ],
+    });
+  });
+
+  it("converts from legacy env field", () => {
+    const result = cursorAdapter.fromAgentFormat("test", {
+      command: "npx",
+      args: ["-y", "pkg"],
+      env: { KEY: "val" },
+    });
+    expect(result).toEqual({
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "pkg"],
+      env: { KEY: "val" },
+    });
   });
 });
 

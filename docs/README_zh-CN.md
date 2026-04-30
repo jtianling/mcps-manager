@@ -6,7 +6,7 @@
 
 ## 问题
 
-每个 AI 编程助手 (Claude Code, Codex, Gemini CLI, OpenCode, Antigravity) 都使用各自的配置格式来管理 MCP 服务器.  在多个助手之间管理相同的服务器意味着需要手动编辑多个配置文件, 既繁琐又容易出错.
+每个 AI 编程助手 (Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity) 都使用各自的配置格式来管理 MCP 服务器.  在多个助手之间管理相同的服务器意味着需要手动编辑多个配置文件, 既繁琐又容易出错.
 
 ## 解决方案
 
@@ -16,15 +16,16 @@
 中央仓库                     助手配置
 ┌──────────────────┐   ┌─► Claude Code (.claude.json)
 │  server-a (stdio)│───┼─► Codex   (.codex/config.toml)
-│  server-b (http) │   ├─► Gemini CLI  (.gemini/settings.json)
-│  server-c (stdio)│   ├─► OpenCode    (.opencode.json)
-└──────────────────┘   └─► Antigravity (.antigravity/config.json)
+│  server-b (http) │   ├─► Cursor      (.cursor/mcp.json)
+│  server-c (stdio)│   ├─► Gemini CLI  (.gemini/settings.json)
+└──────────────────┘   ├─► OpenCode    (.opencode.json)
+                       └─► Antigravity (.antigravity/config.json)
 ```
 
 ## 特性
 
 - **中央服务器仓库** - 在 `~/.mcps-manager/servers/` 中统一定义 MCP 服务器
-- **多助手支持** - Claude Code, Codex, Gemini CLI, OpenCode, Antigravity
+- **多助手支持** - Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 - **基于规则的 README 解析** - 提供 GitHub URL 或 `owner/repo`, `mcpsmgr` 从 README 的 `claude mcp add` 命令行或 `mcpServers` JSON 块中抽取配置
 - **本地源支持** - 可从 `*.json` 配置文件 (任何助手的 MCP 配置形状) 或本地项目目录 (自动探测 `package.json` / `pyproject.toml`) 安装
 - **按助手覆盖** - 可针对特定助手自定义服务器配置
@@ -83,6 +84,7 @@ mcpsmgr update
 |---|---|---|
 | Claude Code | `.claude.json` (项目级) | JSON |
 | Codex | `.codex/config.toml` (项目级) | TOML |
+| Cursor | `.cursor/mcp.json` (项目级) | JSON |
 | Gemini CLI | `.gemini/settings.json` (全局) | JSON |
 | OpenCode | `.opencode.json` (项目级) | JSON |
 | Antigravity | `.antigravity/config.json` (项目级) | JSON |

@@ -6,7 +6,7 @@ Unified MCP (Model Context Protocol) server manager for multiple AI coding agent
 
 ## Problem
 
-Each AI coding agent (Claude Code, Codex, Gemini CLI, OpenCode, Antigravity) uses its own config format for MCP servers. Managing the same servers across multiple agents means editing multiple config files manually, which is tedious and error-prone.
+Each AI coding agent (Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity) uses its own config format for MCP servers. Managing the same servers across multiple agents means editing multiple config files manually, which is tedious and error-prone.
 
 ## Solution
 
@@ -16,15 +16,16 @@ Each AI coding agent (Claude Code, Codex, Gemini CLI, OpenCode, Antigravity) use
 Central Repository          Agent Configs
 ┌──────────────────┐   ┌─► Claude Code (.claude.json)
 │  server-a (stdio)│───┼─► Codex   (.codex/config.toml)
-│  server-b (http) │   ├─► Gemini CLI  (.gemini/settings.json)
-│  server-c (stdio)│   ├─► OpenCode    (.opencode.json)
-└──────────────────┘   └─► Antigravity (.antigravity/config.json)
+│  server-b (http) │   ├─► Cursor      (.cursor/mcp.json)
+│  server-c (stdio)│   ├─► Gemini CLI  (.gemini/settings.json)
+└──────────────────┘   ├─► OpenCode    (.opencode.json)
+                       └─► Antigravity (.antigravity/config.json)
 ```
 
 ## Features
 
 - **Central server repository** - Define MCP servers once in `~/.mcps-manager/servers/`
-- **Multi-agent support** - Claude Code, Codex, Gemini CLI, OpenCode, Antigravity
+- **Multi-agent support** - Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 - **Rule-based README parsing** - Provide a GitHub URL or `owner/repo` and `mcpsmgr` extracts the config from `claude mcp add` lines or `mcpServers` JSON blocks in the README
 - **Local source support** - Install from a `*.json` file (any agent's MCP config shape) or from a project directory (auto-detects `package.json` / `pyproject.toml`)
 - **Per-agent overrides** - Customize server config for specific agents when needed
@@ -83,6 +84,7 @@ mcpsmgr update
 |---|---|---|
 | Claude Code | `.claude.json` (project) | JSON |
 | Codex | `.codex/config.toml` (project) | TOML |
+| Cursor | `.cursor/mcp.json` (project) | JSON |
 | Gemini CLI | `.gemini/settings.json` (global) | JSON |
 | OpenCode | `.opencode.json` (project) | JSON |
 | Antigravity | `.antigravity/config.json` (project) | JSON |
