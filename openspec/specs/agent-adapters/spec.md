@@ -4,33 +4,50 @@
 ## Requirements
 ### Requirement: Adapter output format
 
-All adapters SHALL output MCP server configs WITHOUT the `env`/`environment` field. The adapter SHALL:
+Adapters SHALL output MCP server configs according to each agent's native format. The adapter SHALL:
 
 1. Substitute `${VAR_NAME}` references in args with actual values from the env block
-2. For remaining env vars (not referenced in args), use the `env` command as a wrapper with `KEY=value` args
-3. Never include `env` or `environment` field in the output
+2. For remaining env vars (not referenced in args), use the `env` command as a wrapper with `KEY=value` args, **UNLESS** the agent adapter declares native support for a dedicated env field in its target config format (e.g. Codex's `[mcp_servers.<name>].env = { KEY = "V" }` table). Native-env adapters SHALL write remaining env vars into the native env field and MUST NOT use the `env` command wrapper.
+3. Never include redundant `env`/`environment` fields when the adapter has chosen the wrapper strategy; native-env adapters WILL include the native env field when there are remaining env vars
 
-When reading configs back (`fromAgentFormat`), the adapter SHALL handle both the new format (command = "env" with KEY=value args) and the legacy format (separate env/environment field) for backward compatibility.
+When reading configs back (`fromAgentFormat`), the adapter SHALL handle:
+- Native env field (if the adapter declares native-env support)
+- `env` command wrapper format (`command: "env"`, KEY=value args)
+- Legacy separate `env`/`environment` field
+
+for backward compatibility.
 
 #### Scenario: Args contain ${VAR} references
 - **WHEN** a stdio config has args containing `${JINA_API_KEY}` and env `{ "JINA_API_KEY": "xxx" }`
-- **THEN** the adapter substitutes `${JINA_API_KEY}` with `xxx` directly in the args, removes the env field, and does NOT use env command wrapper (since no remaining env vars)
+- **THEN** the adapter substitutes `${JINA_API_KEY}` with `xxx` directly in the args, removes the env field, and does NOT use env command wrapper nor emit a native env field (since no remaining env vars)
 
-#### Scenario: Env vars not referenced in args
-- **WHEN** a stdio config has env vars `{ "BRAVE_API_KEY": "xxx" }` with no `${BRAVE_API_KEY}` in args
+#### Scenario: Env vars not referenced in args (wrapper-strategy adapter)
+- **WHEN** a stdio config has env vars `{ "BRAVE_API_KEY": "xxx" }` with no `${BRAVE_API_KEY}` in args, written to an adapter that uses the wrapper strategy (e.g. Claude Code, Gemini CLI, OpenCode, Antigravity, OpenClaw)
 - **THEN** the adapter uses `env` command wrapper: `command: "env"`, args: `["BRAVE_API_KEY=xxx", "npx", ...]`
+
+#### Scenario: Env vars not referenced in args (native-env adapter)
+- **WHEN** a stdio config has env vars `{ "BRAVE_API_KEY": "xxx" }` with no `${BRAVE_API_KEY}` in args, written to a native-env adapter (e.g. Codex)
+- **THEN** the adapter keeps `command` as the original binary, emits `args` without wrapper prefixes, and writes `env = { "BRAVE_API_KEY" = "xxx" }` in the agent's native env field
 
 #### Scenario: Mixed - some referenced, some not
 - **WHEN** a stdio config has `${API_KEY}` in args AND a separate `DEBUG` env var
-- **THEN** `${API_KEY}` is substituted in args, `DEBUG` is passed via env command wrapper
+- **THEN** `${API_KEY}` is substituted in args, `DEBUG` is emitted via the adapter's chosen env strategy (wrapper for wrapper-strategy adapters, native field for native-env adapters)
 
 #### Scenario: Write stdio config without env vars
 - **WHEN** a stdio config has empty env vars
-- **THEN** the adapter outputs config with the original command and args, and NO `env`/`environment` field
+- **THEN** the adapter outputs config with the original command and args, and NO `env`/`environment` field (regardless of wrapper vs native strategy)
 
 #### Scenario: Read new format config
-- **WHEN** the adapter reads a config with `command: "env"` and args containing KEY=value entries
+- **WHEN** a wrapper-strategy adapter reads a config with `command: "env"` and args containing KEY=value entries
 - **THEN** it extracts env vars from the KEY=value args and reconstructs the original command, args, and env
+
+#### Scenario: Read native env format config
+- **WHEN** a native-env adapter reads a config with a native env field (e.g. Codex's `env = { ... }` TOML table)
+- **THEN** it extracts env vars from that field and returns them in the reconstructed `DefaultConfig.env`
+
+#### Scenario: Read legacy wrapper from a native-env adapter's file
+- **WHEN** a native-env adapter reads a config that was written by an earlier version using `command: "env"` wrapper
+- **THEN** it falls back to the wrapper read path, extracting env vars correctly so downstream `sync`/`list --deployed` operations work against old files
 
 #### Scenario: Read legacy format config (backward compatibility)
 - **WHEN** the adapter reads a config with a separate `env`/`environment` field
@@ -59,15 +76,27 @@ When reading configs back (`fromAgentFormat`), the adapter SHALL handle both the
 
 系统 SHALL 提供 Codex 的配置适配器, 操作 `.codex/config.toml` 文件. Adapter 的 id SHALL 为 `"codex"`, name SHALL 为 `"Codex"`, 以表示同时支持 Codex CLI 和 Codex App.
 
+Adapter 写入 HTTP transport 的 MCP 服务时, SHALL 使用 Codex `StreamableHttp` transport 的字段命名: `url` 作为 endpoint, `http_headers` 作为 header 映射 (**NOT** `headers`). 对应的 `fromAgentFormat` SHALL 从 `http_headers` 读取 header 映射.
+
 #### Scenario: 读取已有配置
 
 - **WHEN** 项目中存在 `.codex/config.toml`
-- **THEN** adapter 解析 TOML 文件, 提取 `[mcp_servers.*]` 下所有 MCP 服务条目
+- **THEN** adapter 解析 TOML 文件, 提取 `[mcp_servers.*]` 下所有 MCP 服务条目, 对 HTTP 条目从 `http_headers` 字段读取 headers
 
-#### Scenario: 写入新服务
+#### Scenario: 写入新服务 (stdio)
 
-- **WHEN** 向 Codex 添加一个 MCP 服务
+- **WHEN** 向 Codex 添加一个 stdio transport 的 MCP 服务
 - **THEN** adapter 读取 `.codex/config.toml` (不存在则创建 `.codex/` 目录和文件), 在 `[mcp_servers.<name>]` section 下添加服务配置, 使用 env command wrapper 格式 (有 env vars 时 command = "env"), MUST 保留文件中已有的非 MCP section 和注释
+
+#### Scenario: 写入新服务 (http)
+
+- **WHEN** 向 Codex 添加一个 http transport 的 MCP 服务
+- **THEN** adapter 在 `[mcp_servers.<name>]` section 下写入 `url = "..."` 和 `http_headers = { ... }` (inline table 或子表均可), 字段名 MUST 为 `http_headers` 而非 `headers`, MUST 保留文件中已有的非 MCP section 和注释
+
+#### Scenario: HTTP round-trip
+
+- **WHEN** 对一个 HTTP 类型的 `DefaultConfig` 调用 `toAgentFormat` 得到 TOML 形态的对象, 再对该对象调用 `fromAgentFormat`
+- **THEN** 返回的 `DefaultConfig` 与原对象的 `url` 和 `headers` 语义完全一致
 
 #### Scenario: 同名冲突
 

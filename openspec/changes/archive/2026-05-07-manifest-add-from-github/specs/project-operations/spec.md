@@ -27,6 +27,8 @@
 - **WHEN** 用户执行 `mcpsmgr add https://gitlab.com/foo/bar` (非 github.com)
 - **THEN** 系统 SHALL 报错 "Only GitHub URLs are supported for remote install. Use './path.json' for other sources or pass a central server name."
 
+## ADDED Requirements
+
 ### Requirement: add 命令支持 --agent flag
 
 系统 SHALL 支持 `mcpsmgr add <input> -a <agent-id>` (`--agent <agent-id>`), 跳过交互式 agent 选择, 直接对指定 agent 落地.
