@@ -105,3 +105,7 @@ coverage/
 .codex/
 .gemini/
 .e2e-test/
+
+# mcpsmgr local artifacts
+.mcp.json
+skillsmgr-deploy.json
