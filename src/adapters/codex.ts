@@ -22,6 +22,7 @@ function toAgentFormat(config: DefaultConfig): Record<string, unknown> {
     return nativeConfig;
   }
   return {
+    type: "streamable-http",
     url: config.url,
     http_headers: { ...config.headers },
   };
@@ -72,6 +73,8 @@ function fromAgentFormat(
       url: raw["url"] as string,
       headers: (raw["http_headers"] as Record<string, string>) ?? {},
     };
+    // Note: 'type' field (streamable-http) is dropped on read since DefaultConfig
+    // does not distinguish HTTP variants; codex adapter re-emits it on write.
   }
   return undefined;
 }

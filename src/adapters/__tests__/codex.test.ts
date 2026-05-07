@@ -121,6 +121,7 @@ describe("Codex Adapter http", () => {
     const result = codexAdapter.toAgentFormat(httpConfig);
 
     expect(result).toEqual({
+      type: "streamable-http",
       url: "https://example.com/mcp",
       http_headers: { Authorization: "Bearer test-token" },
     });
@@ -144,6 +145,7 @@ describe("Codex Adapter http", () => {
     );
 
     expect(raw).toEqual({
+      type: "streamable-http",
       url: "https://example.com/mcp",
       http_headers: { Authorization: "Bearer test-token" },
     });
@@ -156,6 +158,7 @@ describe("Codex Adapter http", () => {
     const raw = await readFile(join(tmpDir, ".codex", "config.toml"), "utf-8");
 
     expect(raw).toContain("[mcp_servers.my-mcp]");
+    expect(raw).toContain('type = "streamable-http"');
     expect(raw).toContain("http_headers");
     expect(raw).not.toContain("[mcp_servers.my-mcp.headers]");
     expect(raw).not.toContain("\nheaders =");

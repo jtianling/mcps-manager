@@ -192,6 +192,7 @@ describe("Codex Adapter", () => {
   it("converts HTTP config to Codex StreamableHttp format", () => {
     const result = codexAdapter.toAgentFormat(httpConfig);
     expect(result).toEqual({
+      type: "streamable-http",
       url: "https://example.com/mcp",
       http_headers: { Authorization: "Bearer test-token" },
     });
@@ -213,6 +214,7 @@ describe("Codex Adapter", () => {
       raw as Record<string, unknown>,
     );
     expect(raw).toEqual({
+      type: "streamable-http",
       url: "https://example.com/mcp",
       http_headers: { Authorization: "Bearer test-token" },
     });

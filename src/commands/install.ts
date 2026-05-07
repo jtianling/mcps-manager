@@ -61,7 +61,7 @@ export interface InstallFromRemoteDeps {
 export async function installFromRemote(
   rawInput: string,
   deps: InstallFromRemoteDeps,
-): Promise<void> {
+): Promise<string | undefined> {
   let analysis: AnalysisResult;
   try {
     analysis = await deps.analyze(rawInput);
@@ -70,19 +70,19 @@ export async function installFromRemote(
       `Rule-based analysis could not extract MCP config from ${rawInput}. Configure manually instead?`,
     );
     if (go) await deps.fallbackToManual();
-    return;
+    return undefined;
   }
   const trusted = await deps.confirm(`Trust this analysis result?`);
   if (!trusted) {
     const go = await deps.confirm("Configure manually instead?");
     if (go) await deps.fallbackToManual();
-    return;
+    return undefined;
   }
   if (deps.serverExists(analysis.name)) {
     const overwrite = await deps.confirm(
       `Server "${analysis.name}" already exists. Overwrite?`,
     );
-    if (!overwrite) return;
+    if (!overwrite) return undefined;
   }
   const env: Record<string, string> = {};
   for (const k of analysis.requiredEnvVars) env[k] = await deps.askEnvValue(k);
@@ -99,6 +99,7 @@ export async function installFromRemote(
   };
   await deps.writeServerDefinition(def);
   console.log(`Server "${def.name}" saved to central repository.`);
+  return def.name;
 }
 
 export interface InstallFromLocalDeps {
@@ -203,7 +204,7 @@ async function installCommandInner(source?: string): Promise<void> {
   }
 }
 
-function productionRemoteDeps(): InstallFromRemoteDeps {
+export function productionRemoteDeps(): InstallFromRemoteDeps {
   return {
     analyze: async (rawInput) => {
       const ref = parseGitHubSource(rawInput)!;

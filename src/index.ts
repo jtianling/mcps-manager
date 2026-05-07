@@ -39,9 +39,18 @@ program
   .action((options: { refresh?: boolean }) => deployCommand(options));
 
 program
-  .command("add <server-name>")
-  .description("Add a server from central repository to current project")
-  .action((serverName: string) => addCommand(serverName));
+  .command("add <server-or-source>")
+  .description(
+    "Add a server to current project. <server-or-source> may be a central repository server name, a GitHub owner/repo, or a https://github.com/... URL.",
+  )
+  .option("-a, --agent <id>", "Skip agent prompt and target a specific agent id")
+  .option(
+    "--port <port>",
+    "Override manifest variables.port (manifest-driven flow only)",
+  )
+  .action((input: string, options: { agent?: string; port?: string }) =>
+    addCommand(input, options),
+  );
 
 program
   .command("remove <server-name>")
