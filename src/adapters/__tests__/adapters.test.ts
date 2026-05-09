@@ -62,7 +62,6 @@ describe("Claude Code Adapter", () => {
     await claudeCodeAdapter.write(tmpDir, "brave-search", stdioConfig);
     const servers = await claudeCodeAdapter.read(tmpDir);
     expect(servers["brave-search"]).toEqual({
-      type: "stdio",
       command: "env",
       args: ["BRAVE_API_KEY=test-key", "npx", "-y", "@anthropic/mcp-brave-search"],
     });
@@ -132,7 +131,6 @@ describe("Claude Code Adapter", () => {
     await claudeCodeAdapter.write(tmpDir, "jina", stdioConfigWithRef);
     const servers = await claudeCodeAdapter.read(tmpDir);
     expect(servers["jina"]).toEqual({
-      type: "stdio",
       command: "npx",
       args: [
         "-y",
@@ -148,7 +146,6 @@ describe("Claude Code Adapter", () => {
     await claudeCodeAdapter.write(tmpDir, "mixed", stdioConfigMixed);
     const servers = await claudeCodeAdapter.read(tmpDir);
     expect(servers["mixed"]).toEqual({
-      type: "stdio",
       command: "env",
       args: [
         "DEBUG=true",

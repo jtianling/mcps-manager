@@ -12,22 +12,23 @@ function toAgentFormat(config: DefaultConfig): Record<string, unknown> {
     const envArgs = buildEnvArgs(remainingEnv);
     if (envArgs.length > 0) {
       return {
-        type: "stdio",
         command: "env",
         args: [...envArgs, config.command, ...resolvedArgs],
       };
     }
     return {
-      type: "stdio",
       command: config.command,
       args: resolvedArgs,
     };
   }
-  return {
+  const result: Record<string, unknown> = {
     type: "http",
     url: config.url,
-    headers: { ...config.headers },
   };
+  if (Object.keys(config.headers).length > 0) {
+    result["headers"] = { ...config.headers };
+  }
+  return result;
 }
 
 function fromAgentFormat(
@@ -35,7 +36,8 @@ function fromAgentFormat(
   raw: Record<string, unknown>,
 ): DefaultConfig | undefined {
   const type = raw["type"] as string | undefined;
-  if (type === "stdio") {
+  const isStdio = type === "stdio" || (type === undefined && raw["command"]);
+  if (isStdio) {
     const command = raw["command"] as string;
     const rawArgs = (raw["args"] as string[]) ?? [];
     const legacyEnv = raw["env"] as Record<string, string> | undefined;
@@ -56,7 +58,7 @@ function fromAgentFormat(
 
     return { transport: "stdio", command, args: rawArgs, env: {} };
   }
-  if (type === "http") {
+  if (type === "http" || (type === undefined && raw["url"])) {
     return {
       transport: "http",
       url: raw["url"] as string,
