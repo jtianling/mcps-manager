@@ -348,11 +348,13 @@ async function runAddFromManifest(
 
   if (result.prerequisites.length > 0) {
     deps.print("");
-    deps.print("Prerequisites (mcpsmgr will NOT run these for you):");
-    for (const p of result.prerequisites) {
-      if (p.description) deps.print(`  - ${p.description}`);
-      deps.print(`      $ ${p.command}`);
-      for (const note of p.notes) deps.print(`      • ${note}`);
+    deps.print("Prerequisites:");
+    for (let i = 0; i < result.prerequisites.length; i++) {
+      if (i > 0) deps.print("");
+      const p = result.prerequisites[i]!;
+      if (p.description) deps.print(`  ${p.description}`);
+      deps.print(`    $ ${p.command}`);
+      for (const note of p.notes) deps.print(`    • ${note}`);
     }
   }
 
@@ -360,7 +362,7 @@ async function runAddFromManifest(
     const notes = result.postInstallNotes[id];
     if (!notes || notes.length === 0) continue;
     deps.print("");
-    deps.print(`Post-install notes (${getAdapter(id).name}):`);
+    deps.print(`${getAdapter(id).name} follow-up:`);
     for (const note of notes) deps.print(`  • ${note}`);
   }
 }
