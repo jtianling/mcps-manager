@@ -25,6 +25,8 @@ export type AgentId =
 export interface ServerDefinition {
   readonly name: string;
   readonly source: string;
+  readonly repoName?: string;
+  readonly bundleId?: string;
   readonly default: DefaultConfig;
   readonly overrides: Readonly<Partial<Record<AgentId, Partial<DefaultConfig>>>>;
 }

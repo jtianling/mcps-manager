@@ -27,6 +27,7 @@ Central Repository          Agent Configs
 - **Central server repository** - Define MCP servers once in `~/.mcps-manager/servers/`
 - **Multi-agent support** - Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
 - **Rule-based README parsing** - Provide a GitHub URL or `owner/repo` and `mcpsmgr` extracts the config from `claude mcp add` lines or `mcpServers` JSON blocks in the README
+- **GitHub bundle 反查** - 通过 GitHub manifest 安装的多服务器仓库会记录 `repoName` 和 `bundleId`, 后续可用 `owner/repo`, GitHub URL, 或 repo basename 直接添加同一组服务器
 - **Local source support** - Install from a `*.json` file (any agent's MCP config shape) or from a project directory (auto-detects `package.json` / `pyproject.toml`)
 - **Per-agent overrides** - Customize server config for specific agents when needed
 - **Project-level deploy** - Deploy selected servers to detected agents in any project
@@ -56,6 +57,8 @@ mcpsmgr deploy
 
 # 3. Add a specific server to the current project
 mcpsmgr add my-server
+mcpsmgr add anthropics/some-mcp-server                   # GitHub source
+mcpsmgr add some-mcp-server                              # Installed repo basename bundle
 
 # 4. Sync central changes to project agents
 mcpsmgr deploy --refresh
@@ -78,6 +81,20 @@ mcpsmgr update
 | `mcpsmgr add <server>` | | Add a central server to current project |
 | `mcpsmgr remove <server>` | | Remove a server from current project |
 
+## GitHub Bundle 反查
+
+从 GitHub source 安装服务时, `mcpsmgr` 会把归一化后的仓库 URL 写入 `~/.mcps-manager/bundles.json`, 并在每个 server definition 上保存可选的 `repoName` 和 `bundleId`.  这让同一个远端仓库的多 server manifest 可以被三种输入精准命中:
+
+- `mcpsmgr add owner/repo`
+- `mcpsmgr add https://github.com/owner/repo`
+- `mcpsmgr add repo` (当中央仓库没有同名 server, 且已安装条目的 `repoName` 等于 `repo`)
+
+`add` 会先解析本地 server 或 bundle.  命中后只写入选定 agent, 不重新拉取 manifest, 不询问覆盖中央仓库.  只有 `owner/repo` 或 GitHub URL 在本地找不到 bundle 时, 才会走远端 manifest 或 README fallback.
+
+`install` 会在 GitHub 来源成功写入 server 后同步更新 bundle members.  本地路径和手动安装不会写入 `repoName` / `bundleId`.
+
+`uninstall <name>` 删除中央 server 时, 如果该 server 属于某个 bundle, 会同步从 `bundles.json` 的 members 中移除它.  最后一个 member 被移除后, 对应 bundle 条目会自动删除.
+
 ## Supported Agents
 
 | Agent | Config Location | Format |
@@ -91,7 +108,7 @@ mcpsmgr update
 
 ## How It Works
 
-1. **Central Repository** (`~/.mcps-manager/servers/`) stores server definitions as JSON files, each containing the server name, source, default config, and per-agent overrides.
+1. **Central Repository** (`~/.mcps-manager/servers/`) stores server definitions as JSON files, each containing the server name, source, optional GitHub bundle metadata, default config, and per-agent overrides.  `~/.mcps-manager/bundles.json` stores GitHub bundle to server members mappings.
 
 2. **Agent Adapters** understand each agent's config format. When deploying, `mcpsmgr` resolves the final config (default + overrides) and writes it in the agent's native format.
 

@@ -5,6 +5,7 @@ import {
   serverExists,
   writeServerDefinition,
 } from "../utils/server-store.js";
+import { upsertBundle } from "../utils/bundle-store.js";
 import { resolveConfig } from "../utils/resolve-config.js";
 import { CHECKBOX_DEFAULTS, isUserCancellation } from "../utils/prompt.js";
 import type {
@@ -34,6 +35,11 @@ import {
   installFromRemote,
   productionRemoteDeps,
 } from "./install.js";
+import {
+  resolve as resolveSourceInput,
+  type ResolveResult,
+} from "../services/source-resolver.js";
+import { gitBundleMetadata } from "../utils/url-normalize.js";
 
 const KEBAB_CASE = /^[a-z][a-z0-9-]*$/;
 const KNOWN_AGENT_IDS: readonly AgentId[] = allAdapters.map((a) => a.id);
@@ -79,10 +85,19 @@ export interface AddOptions {
 export interface AddDeps {
   readonly projectDir: string;
   readonly serverExists: (name: string) => boolean;
+  readonly resolveInput: (input: string) => Promise<ResolveResult>;
   readonly readServerDefinition: (
     name: string,
   ) => Promise<ServerDefinition | undefined>;
   readonly writeServerDefinition: (def: ServerDefinition) => Promise<void>;
+  readonly upsertBundle: (
+    id: string,
+    info: {
+      readonly url: string;
+      readonly members: readonly string[];
+      readonly selectionMode: "all";
+    },
+  ) => Promise<void>;
   readonly detectAgentIds: (projectDir: string) => readonly AgentId[];
   readonly fetchManifest: (ref: GitHubRef) => Promise<Manifest | undefined>;
   readonly readmeFallbackInstall: (source: string) => Promise<string | undefined>;
@@ -129,13 +144,6 @@ export async function runAdd(
   options: AddOptions,
   deps: AddDeps,
 ): Promise<void> {
-  const classified = classifyAddInput(serverInput);
-  if (classified.kind === "error") {
-    deps.error(`Error: ${classified.reason}`);
-    deps.setExitCode(1);
-    return;
-  }
-
   if (
     options.agent !== undefined &&
     !KNOWN_AGENT_IDS.includes(options.agent as AgentId)
@@ -147,7 +155,9 @@ export async function runAdd(
     return;
   }
 
-  if (classified.kind === "central") {
+  const resolved = await deps.resolveInput(serverInput);
+
+  if (resolved.kind === "server") {
     if (options.port !== undefined) {
       deps.error(
         "Error: --port only applies to manifest-driven add (GitHub source)",
@@ -155,11 +165,57 @@ export async function runAdd(
       deps.setExitCode(1);
       return;
     }
-    await runAddFromCentral(classified.name, options.agent as AgentId | undefined, deps);
+    await runAddFromCentral(resolved.name, options.agent as AgentId | undefined, deps);
     return;
   }
 
-  await runAddFromGitHub(classified.source, options, deps);
+  if (resolved.kind === "bundle") {
+    if (options.port !== undefined) {
+      deps.error(
+        "Error: --port only applies to manifest-driven add (GitHub source)",
+      );
+      deps.setExitCode(1);
+      return;
+    }
+    await runAddFromBundle(resolved, options.agent as AgentId | undefined, deps);
+    return;
+  }
+
+  if (resolved.inputForm === "owner-repo" || resolved.inputForm === "url") {
+    if (
+      /^https?:\/\//i.test(serverInput.trim()) &&
+      !parseGitHubSource(serverInput.trim())
+    ) {
+      deps.error(
+        "Error: Only GitHub URLs are supported for remote install. Use './path.json' for other sources or pass a central server name.",
+      );
+      deps.setExitCode(1);
+      return;
+    }
+    await runAddFromGitHub(serverInput.trim(), options, deps);
+    return;
+  }
+
+  if (resolved.inputForm === "ambiguous-reponame") {
+    deps.error(
+      `Error: Ambiguous bareword "${serverInput.trim()}": matches multiple repos (${(resolved.candidates ?? []).join(", ")}). Use owner/repo form to disambiguate.`,
+    );
+    deps.setExitCode(1);
+    return;
+  }
+
+  if (resolved.inputForm === "kebab") {
+    deps.error(
+      `Error: Server "${serverInput.trim()}" not found in central repository. Use "mcpsmgr install" to add it.`,
+    );
+    deps.setExitCode(1);
+    return;
+  }
+
+  deps.error(
+    "Error: Invalid input. Provide a GitHub URL (https://github.com/owner/repo), owner/repo shortname, or a central server name (kebab-case).",
+  );
+  deps.setExitCode(1);
 }
 
 async function runAddFromCentral(
@@ -202,6 +258,44 @@ async function runAddFromCentral(
       deps.warn(
         `  ! ${serverName} -> ${adapter.name}: ${error instanceof Error ? error.message : String(error)}`,
       );
+    }
+  }
+}
+
+async function runAddFromBundle(
+  bundle: Extract<ResolveResult, { readonly kind: "bundle" }>,
+  agentFlag: AgentId | undefined,
+  deps: AddDeps,
+): Promise<void> {
+  const detectedIds = new Set(deps.detectAgentIds(deps.projectDir));
+  const selectedAgentIds = agentFlag
+    ? [agentFlag]
+    : await deps.promptAgents(
+        `Select agents to add bundle "${bundle.url}" to:`,
+        detectedIds,
+      );
+  if (selectedAgentIds.length === 0) {
+    deps.print("No agents selected.");
+    return;
+  }
+
+  for (const serverName of bundle.members) {
+    const definition = await deps.readServerDefinition(serverName);
+    if (!definition) {
+      deps.warn(`  ! ${serverName}: missing central server definition, skipped`);
+      continue;
+    }
+    for (const id of selectedAgentIds) {
+      const adapter = getAdapter(id);
+      try {
+        const config = resolveConfig(definition, adapter);
+        await deps.writeToAgent(id, deps.projectDir, serverName, config);
+        deps.print(`  + ${serverName} -> ${adapter.name}`);
+      } catch (error) {
+        deps.warn(
+          `  ! ${serverName} -> ${adapter.name}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
     }
   }
 }
@@ -322,11 +416,14 @@ async function runAddFromManifest(
 
   for (const w of result.warnings) deps.warn(`Warning: ${w}`);
 
+  const bundleMembers = new Set<string>();
   for (const id of selectedAgentIds) {
     const adapter = getAdapter(id);
     const defs = result.perAgent[id] ?? [];
     for (const def of defs) {
       if (deps.serverExists(def.name)) {
+        // Pre-existing central record stays regardless of overwrite outcome.
+        bundleMembers.add(def.name);
         const ok = await deps.confirmOverwrite(def.name);
         if (!ok) {
           deps.print(`  · skipped (central): ${def.name}`);
@@ -334,6 +431,7 @@ async function runAddFromManifest(
         }
       }
       await deps.writeServerDefinition(def);
+      bundleMembers.add(def.name);
       deps.print(`  + ${def.name} -> central repository`);
       try {
         await deps.writeToAgent(id, deps.projectDir, def.name, def.default);
@@ -344,6 +442,15 @@ async function runAddFromManifest(
         );
       }
     }
+  }
+
+  const sourceMetadata = gitBundleMetadata(source);
+  if (sourceMetadata && bundleMembers.size > 0) {
+    await deps.upsertBundle(sourceMetadata.bundleId, {
+      url: sourceMetadata.url,
+      members: [...bundleMembers],
+      selectionMode: "all",
+    });
   }
 
   if (result.prerequisites.length > 0) {
@@ -371,8 +478,10 @@ function productionAddDeps(): AddDeps {
   return {
     projectDir: process.cwd(),
     serverExists,
+    resolveInput: (input) => resolveSourceInput(input),
     readServerDefinition,
     writeServerDefinition,
+    upsertBundle,
     detectAgentIds: (projectDir) =>
       detectAgents(projectDir).map((a) => a.id),
     fetchManifest: (ref) => defaultFetchManifest(ref),

@@ -20,6 +20,8 @@ import { fetchManifestDefault } from "../install/manifest-remote.js";
 import { parseGitHubSource, isGitHubRepo } from "../install/source.js";
 import { selectServers } from "../install/select-servers.js";
 import { isUserCancellation } from "../utils/prompt.js";
+import { upsertBundle } from "../utils/bundle-store.js";
+import { gitBundleMetadata } from "../utils/url-normalize.js";
 
 export type ClassifiedInput =
   | { kind: "github"; value: string }
@@ -55,6 +57,14 @@ export interface InstallFromRemoteDeps {
   askEnvValue: (key: string) => Promise<string>;
   serverExists: (name: string) => boolean;
   writeServerDefinition: (def: ServerDefinition) => Promise<void>;
+  upsertBundle: (
+    id: string,
+    info: {
+      readonly url: string;
+      readonly members: readonly string[];
+      readonly selectionMode: "all";
+    },
+  ) => Promise<void>;
   fallbackToManual: () => Promise<void>;
 }
 
@@ -87,6 +97,7 @@ export async function installFromRemote(
   const env: Record<string, string> = {};
   for (const k of analysis.requiredEnvVars) env[k] = await deps.askEnvValue(k);
   const base = analysis.default;
+  const sourceMetadata = gitBundleMetadata(rawInput);
   const merged: DefaultConfig =
     base.transport === "stdio"
       ? ({ ...base, env: { ...base.env, ...env } } satisfies StdioConfig)
@@ -94,10 +105,23 @@ export async function installFromRemote(
   const def: ServerDefinition = {
     name: analysis.name,
     source: rawInput,
+    ...(sourceMetadata
+      ? {
+          repoName: sourceMetadata.repoName,
+          bundleId: sourceMetadata.bundleId,
+        }
+      : {}),
     default: merged,
     overrides: {},
   };
   await deps.writeServerDefinition(def);
+  if (sourceMetadata) {
+    await deps.upsertBundle(sourceMetadata.bundleId, {
+      url: sourceMetadata.url,
+      members: [def.name],
+      selectionMode: "all",
+    });
+  }
   console.log(`Server "${def.name}" saved to central repository.`);
   return def.name;
 }
@@ -222,6 +246,7 @@ export function productionRemoteDeps(): InstallFromRemoteDeps {
       }),
     serverExists,
     writeServerDefinition,
+    upsertBundle,
     fallbackToManual: manualAddFlow,
   };
 }

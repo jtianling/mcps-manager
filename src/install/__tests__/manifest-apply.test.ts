@@ -69,6 +69,21 @@ const baseManifest: Manifest = {
 };
 
 describe("applyManifest variable substitution", () => {
+  it("adds GitHub repo metadata to each ServerDefinition", () => {
+    const out = applyManifest({
+      manifest: baseManifest,
+      source: "owner/repo",
+      variableValues: collectVariableDefaults(baseManifest),
+      envValues: {},
+      agentIds: ["claude-code"],
+    });
+    expect(out.perAgent["claude-code"]![0]).toMatchObject({
+      source: "owner/repo",
+      repoName: "repo",
+      bundleId: "git:https://github.com/owner/repo",
+    });
+  });
+
   it("uses variable defaults when no override", () => {
     const out = applyManifest({
       manifest: baseManifest,

@@ -11,12 +11,14 @@ describe("installFromRemote", () => {
       requiredEnvVars: ["API_KEY"],
     };
     const write = vi.fn().mockResolvedValue(undefined);
+    const upsertBundle = vi.fn().mockResolvedValue(undefined);
     await installFromRemote("owner/repo", {
       analyze: async () => analysis,
       confirm: async () => true,
       askEnvValue: async (k) => (k === "API_KEY" ? "secret" : ""),
       serverExists: () => false,
       writeServerDefinition: write,
+      upsertBundle,
       fallbackToManual: async () => {
         throw new Error("should not fallback");
       },
@@ -25,8 +27,18 @@ describe("installFromRemote", () => {
       expect.objectContaining({
         name: "pkg",
         source: "owner/repo",
+        repoName: "repo",
+        bundleId: "git:https://github.com/owner/repo",
         default: expect.objectContaining({ env: { API_KEY: "secret" } }),
       }),
+    );
+    expect(upsertBundle).toHaveBeenCalledWith(
+      "git:https://github.com/owner/repo",
+      {
+        url: "https://github.com/owner/repo",
+        members: ["pkg"],
+        selectionMode: "all",
+      },
     );
   });
 
@@ -40,6 +52,7 @@ describe("installFromRemote", () => {
       askEnvValue: async () => "",
       serverExists: () => false,
       writeServerDefinition: vi.fn(),
+      upsertBundle: vi.fn(),
       fallbackToManual: fallback,
     });
     expect(fallback).toHaveBeenCalled();
@@ -63,6 +76,7 @@ describe("installFromRemote", () => {
       askEnvValue: async () => "",
       serverExists: () => false,
       writeServerDefinition: write,
+      upsertBundle: vi.fn(),
       fallbackToManual: async () => {
         /* noop */
       },

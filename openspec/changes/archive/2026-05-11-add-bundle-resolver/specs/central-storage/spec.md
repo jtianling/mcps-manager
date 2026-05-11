@@ -1,7 +1,5 @@
-## Purpose
+## MODIFIED Requirements
 
-管理 `~/.mcps-manager/` 中央仓库的服务定义文件存储. 中央目录按需由首次 `install` 自动创建, 不再需要显式的初始化命令.
-## Requirements
 ### Requirement: 服务定义文件存储
 
 系统 SHALL 将每个 MCP 服务定义保存为 `~/.mcps-manager/servers/{name}.json`, 文件权限 600.
@@ -45,6 +43,8 @@
 - **WHEN** 读取一个不含 `repoName` / `bundleId` 字段的 `servers/<name>.json`
 - **THEN** 系统 SHALL 正常解析并返回 ServerDefinition (两个字段为 `undefined`); 该 server 仅可通过 server name 命中, 不会通过 repoName 反查到 bundle
 
+## ADDED Requirements
+
 ### Requirement: Bundle 存储文件
 
 系统 SHALL 在 `~/.mcps-manager/bundles.json` 维护远端仓库 → 本地多 server 的 1→N 映射. 该文件与 `servers/` 目录共存, 由 `install` / `uninstall` 命令同步维护.
@@ -63,4 +63,3 @@
 
 - **WHEN** bundles.json 存在但 JSON 解析失败
 - **THEN** 系统 SHALL 报错并退出非零, 提示用户手动删除或修复; SHALL NOT 自动覆盖以避免丢数据
-

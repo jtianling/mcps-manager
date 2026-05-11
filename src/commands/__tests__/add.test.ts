@@ -13,8 +13,28 @@ function buildDeps(overrides: Partial<AddDeps> = {}): AddDeps {
   return {
     projectDir: "/tmp/proj",
     serverExists: () => false,
+    resolveInput: async (input) => {
+      const trimmed = input.trim();
+      const classified = classifyAddInput(trimmed);
+      if (classified.kind === "central") {
+        return overrides.serverExists?.(trimmed) ?? false
+          ? { kind: "server", name: trimmed }
+          : { kind: "not-found", inputForm: "kebab" };
+      }
+      if (classified.kind === "github") {
+        return {
+          kind: "not-found",
+          inputForm: trimmed.startsWith("http") ? "url" : "owner-repo",
+        };
+      }
+      if (trimmed.startsWith("http")) {
+        return { kind: "not-found", inputForm: "url" };
+      }
+      return { kind: "not-found", inputForm: "invalid" };
+    },
     readServerDefinition: async () => undefined,
     writeServerDefinition: vi.fn(async () => undefined),
+    upsertBundle: vi.fn(async () => undefined),
     detectAgentIds: () => [],
     fetchManifest: async () => undefined,
     readmeFallbackInstall: async () => undefined,
@@ -270,6 +290,14 @@ describe("runAdd github manifest flow", () => {
       deps,
     );
     expect(writeServerDefinition).toHaveBeenCalledTimes(2);
+    expect(deps.upsertBundle).toHaveBeenCalledWith(
+      "git:https://github.com/jtianling/cross-agent-teams-mcp",
+      {
+        url: "https://github.com/jtianling/cross-agent-teams-mcp",
+        members: ["cross-agent-teams", "cross-agent-teams-channel"],
+        selectionMode: "all",
+      },
+    );
     expect(writes.map((w) => w.name).sort()).toEqual([
       "cross-agent-teams",
       "cross-agent-teams-channel",
@@ -370,6 +398,40 @@ describe("runAdd github manifest flow", () => {
     expect(d.__exitCode()).toBe(1);
   });
 
+  it("bundle members include pre-existing server when user declines overwrite", async () => {
+    // Simulate: server "cross-agent-teams" already exists in central, user
+    // declines overwrite. "cross-agent-teams-channel" is new and gets written.
+    // Bundle.members MUST still list both, so a subsequent kebab-by-repoName
+    // resolve doesn't lose track of the pre-existing server.
+    const existing = new Set(["cross-agent-teams"]);
+    const upsertBundle = vi.fn(async () => undefined);
+    const writeServerDefinition = vi.fn(async (def: ServerDefinition) => {
+      existing.add(def.name);
+    });
+    const deps = buildDeps({
+      fetchManifest: async () => xatsManifest,
+      serverExists: (n) => existing.has(n),
+      confirmOverwrite: async () => false,
+      writeServerDefinition,
+      upsertBundle,
+    });
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "claude-code" },
+      deps,
+    );
+    expect(writeServerDefinition).toHaveBeenCalledTimes(1);
+    expect(upsertBundle).toHaveBeenCalledWith(
+      "git:https://github.com/jtianling/cross-agent-teams-mcp",
+      expect.objectContaining({
+        members: expect.arrayContaining([
+          "cross-agent-teams",
+          "cross-agent-teams-channel",
+        ]),
+      }),
+    );
+  });
+
   it("envVar CROSS_AGENT_TEAMS_TOKEN prompted, header injected", async () => {
     let captured: DefaultConfig | undefined;
     const deps = buildDeps({
@@ -436,5 +498,155 @@ describe("runAdd github fallback to README", () => {
     });
     await runAdd("owner/repo", {}, deps);
     expect(writeToAgent).not.toHaveBeenCalled();
+  });
+
+  it("non-GitHub URL errors without manifest fetch", async () => {
+    const fetchManifest = vi.fn(async () => undefined);
+    const deps = buildDeps({ fetchManifest });
+    await runAdd("https://gitlab.com/foo/bar", {}, deps);
+    const d = getDiagnostics(deps);
+    expect(fetchManifest).not.toHaveBeenCalled();
+    expect(d.__sink.error.some((l) => /Only GitHub URLs/.test(l))).toBe(true);
+    expect(d.__exitCode()).toBe(1);
+  });
+});
+
+describe("runAdd resolver bundle flow", () => {
+  it("adds every bundle member without network or central writes", async () => {
+    const definitions: Record<string, ServerDefinition> = {
+      "cross-agent-teams": {
+        name: "cross-agent-teams",
+        source: "owner/repo",
+        repoName: "repo",
+        bundleId: "git:https://github.com/owner/repo",
+        default: { transport: "http", url: "http://127.0.0.1/mcp", headers: {} },
+        overrides: {},
+      },
+      "cross-agent-teams-channel": {
+        name: "cross-agent-teams-channel",
+        source: "owner/repo",
+        repoName: "repo",
+        bundleId: "git:https://github.com/owner/repo",
+        default: { transport: "stdio", command: "npx", args: ["channel"], env: {} },
+        overrides: {},
+      },
+    };
+    const fetchManifest = vi.fn(async () => xatsManifest);
+    const writeServerDefinition = vi.fn(async () => undefined);
+    const writeToAgent = vi.fn(async () => undefined);
+    const deps = buildDeps({
+      resolveInput: async () => ({
+        kind: "bundle",
+        bundleId: "git:https://github.com/owner/repo",
+        url: "https://github.com/owner/repo",
+        members: Object.keys(definitions),
+      }),
+      readServerDefinition: async (name) => definitions[name],
+      fetchManifest,
+      writeServerDefinition,
+      writeToAgent,
+    });
+
+    await runAdd("repo", { agent: "claude-code" }, deps);
+
+    expect(fetchManifest).not.toHaveBeenCalled();
+    expect(writeServerDefinition).not.toHaveBeenCalled();
+    expect(writeToAgent).toHaveBeenCalledTimes(2);
+    expect(writeToAgent).toHaveBeenCalledWith(
+      "claude-code",
+      "/tmp/proj",
+      "cross-agent-teams",
+      definitions["cross-agent-teams"]!.default,
+    );
+  });
+
+  it("reports ambiguous repoName candidates", async () => {
+    const deps = buildDeps({
+      resolveInput: async () => ({
+        kind: "not-found",
+        inputForm: "ambiguous-reponame",
+        candidates: ["a/foo", "b/foo"],
+      }),
+    });
+    await runAdd("foo", {}, deps);
+    const d = getDiagnostics(deps);
+    expect(d.__sink.error.at(0)).toContain(
+      'Ambiguous bareword "foo": matches multiple repos (a/foo, b/foo)',
+    );
+    expect(d.__exitCode()).toBe(1);
+  });
+
+  it("keeps old ServerDefinition add-by-name working", async () => {
+    const definition: ServerDefinition = {
+      name: "legacy-server",
+      source: "old",
+      default: { transport: "stdio", command: "npx", args: [], env: {} },
+      overrides: {},
+    };
+    const writeToAgent = vi.fn(async () => undefined);
+    const deps = buildDeps({
+      serverExists: (name) => name === "legacy-server",
+      readServerDefinition: async () => definition,
+      writeToAgent,
+    });
+    await runAdd("legacy-server", { agent: "claude-code" }, deps);
+    expect(writeToAgent).toHaveBeenCalledWith(
+      "claude-code",
+      "/tmp/proj",
+      "legacy-server",
+      definition.default,
+    );
+  });
+
+  it("matches first remote add and later repoName bundle add effects", async () => {
+    const central = new Map<string, ServerDefinition>();
+    let bundleMembers: readonly string[] | undefined;
+    const agentWrites: Record<string, DefaultConfig[]> = {};
+    const fetchManifest = vi.fn(async () => xatsManifest);
+    const writeServerDefinition = vi.fn(async (def: ServerDefinition) => {
+      central.set(def.name, def);
+    });
+    const upsertBundle = vi.fn(async (_id, info) => {
+      bundleMembers = info.members;
+    });
+    const writeToAgent = vi.fn(async (_agent, _dir, name, config) => {
+      agentWrites[name] = [...(agentWrites[name] ?? []), config];
+    });
+    const deps = buildDeps({
+      resolveInput: async (input) => {
+        if (input === "cross-agent-teams-mcp" && bundleMembers) {
+          return {
+            kind: "bundle",
+            bundleId: "git:https://github.com/jtianling/cross-agent-teams-mcp",
+            url: "https://github.com/jtianling/cross-agent-teams-mcp",
+            members: bundleMembers,
+          };
+        }
+        return { kind: "not-found", inputForm: "owner-repo" };
+      },
+      fetchManifest,
+      writeServerDefinition,
+      upsertBundle,
+      readServerDefinition: async (name) => central.get(name),
+      writeToAgent,
+      promptEnvValue: async () => "",
+    });
+
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "claude-code" },
+      deps,
+    );
+    const afterFirst = new Map(
+      Object.entries(agentWrites).map(([name, configs]) => [name, configs[0]]),
+    );
+    await runAdd("cross-agent-teams-mcp", { agent: "claude-code" }, deps);
+
+    expect(fetchManifest).toHaveBeenCalledTimes(1);
+    expect(writeServerDefinition).toHaveBeenCalledTimes(2);
+    expect(writeToAgent).toHaveBeenCalledTimes(4);
+    for (const [name, config] of afterFirst) {
+      expect(agentWrites[name]![1]).toEqual(config);
+    }
   });
 });

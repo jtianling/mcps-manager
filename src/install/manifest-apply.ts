@@ -10,6 +10,7 @@ import type {
   ManifestPrerequisite,
   ManifestServerConfig,
 } from "./manifest-schema.js";
+import { gitBundleMetadata } from "../utils/url-normalize.js";
 
 const VAR_PATTERN = /\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
 
@@ -46,6 +47,7 @@ export function applyManifest(input: ApplyManifestInput): ApplyManifestResult {
     ...envValues,
   };
   const optionalDeclared = collectOptionalDeclaredNames(manifest, envValues);
+  const sourceMetadata = gitBundleMetadata(source);
 
   validateSelectedAgents(manifest, agentIds);
   const headerInsertions = buildEnvHeaderInsertions(manifest, envValues);
@@ -68,6 +70,12 @@ export function applyManifest(input: ApplyManifestInput): ApplyManifestResult {
       return {
         name: srv.name,
         source,
+        ...(sourceMetadata
+          ? {
+              repoName: sourceMetadata.repoName,
+              bundleId: sourceMetadata.bundleId,
+            }
+          : {}),
         default: resolved,
         overrides: {},
       };
