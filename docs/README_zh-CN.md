@@ -1,6 +1,6 @@
 # mcpsmgr
 
-统一的 MCP (Model Context Protocol) 服务器管理工具 —— 一次定义, 同步部署到 Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity 等多个 AI coding agent.
+统一的 MCP (Model Context Protocol) 服务器管理工具 —— 一次定义, 同步部署到 Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity, OpenClaw 等多个 AI coding agent.
 
 **[English](../README.md)**
 
@@ -93,16 +93,17 @@ mcpsmgr update [name]         # 重新分析源文档, 更新中央定义
 
 ## 支持的 agent
 
-| Agent | 配置位置 | 格式 |
-|---|---|---|
-| Claude Code | `.claude.json` (项目) | JSON |
-| Codex | `.codex/config.toml` (项目) | TOML |
-| Cursor | `.cursor/mcp.json` (项目) | JSON |
-| Gemini CLI | `.gemini/settings.json` (全局) | JSON |
-| OpenCode | `.opencode.json` (项目) | JSON |
-| Antigravity | `.antigravity/config.json` (项目) | JSON |
+| Agent | 配置位置 | 范围 | 格式 |
+|---|---|---|---|
+| Claude Code | `.mcp.json` | 项目 | JSON |
+| Codex | `.codex/config.toml` | 项目 | TOML |
+| Cursor | `.cursor/mcp.json` | 项目 | JSON |
+| Gemini CLI | `.gemini/settings.json` | 项目 | JSON |
+| OpenCode | `opencode.json` | 项目 | JSON |
+| Antigravity | `~/.gemini/antigravity/mcp_config.json` | 全局 | JSON |
+| OpenClaw | `~/.openclaw/openclaw.json` | 全局 | JSON5 |
 
-> **坑 —— 全局 agent.** Gemini CLI 是全局配置, 不是 per-project. `add` 和 `deploy` 写入前会警告, 先看一眼 diff 再确认.
+> **坑 —— 全局 agent.** Antigravity 和 OpenClaw 在整台机器上共用同一份配置. `add` 和 `deploy` 默认不勾选这两个, 真要改全局再手动勾.
 
 ## GitHub bundle (反查)
 

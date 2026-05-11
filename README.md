@@ -1,6 +1,6 @@
 # mcpsmgr
 
-Unified MCP (Model Context Protocol) server manager for multiple AI coding agents — define MCP servers once, sync them to Claude Code, Codex, Cursor, Gemini CLI, OpenCode, and Antigravity from one place.
+Unified MCP (Model Context Protocol) server manager for multiple AI coding agents — define MCP servers once, sync them to Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity, and OpenClaw from one place.
 
 **[中文文档](./docs/README_zh-CN.md)**
 
@@ -93,16 +93,17 @@ mcpsmgr update [name]         # re-analyze sources and patch central definitions
 
 ## Supported agents
 
-| Agent | Config Location | Format |
-|---|---|---|
-| Claude Code | `.claude.json` (project) | JSON |
-| Codex | `.codex/config.toml` (project) | TOML |
-| Cursor | `.cursor/mcp.json` (project) | JSON |
-| Gemini CLI | `.gemini/settings.json` (global) | JSON |
-| OpenCode | `.opencode.json` (project) | JSON |
-| Antigravity | `.antigravity/config.json` (project) | JSON |
+| Agent | Config Location | Scope | Format |
+|---|---|---|---|
+| Claude Code | `.mcp.json` | project | JSON |
+| Codex | `.codex/config.toml` | project | TOML |
+| Cursor | `.cursor/mcp.json` | project | JSON |
+| Gemini CLI | `.gemini/settings.json` | project | JSON |
+| OpenCode | `opencode.json` | project | JSON |
+| Antigravity | `~/.gemini/antigravity/mcp_config.json` | global | JSON |
+| OpenClaw | `~/.openclaw/openclaw.json` | global | JSON5 |
 
-> **Gotcha — global agents.** Gemini CLI is configured globally rather than per-project. `add` and `deploy` will warn before writing to it; review the diff before saying yes.
+> **Gotcha — global agents.** Antigravity and OpenClaw share a single config across every project on the machine. `add` and `deploy` leave them unchecked by default; tick them only if you really want a host-wide change.
 
 ## GitHub bundles (reverse-lookup)
 
