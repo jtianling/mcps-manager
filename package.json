@@ -1,6 +1,6 @@
 {
   "name": "mcpsmgr",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "Unified MCP server manager for multiple coding agents",
   "type": "module",
   "repository": {
