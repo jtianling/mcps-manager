@@ -102,8 +102,9 @@ mcpsmgr update [name]         # re-analyze sources and patch central definitions
 | OpenCode | `opencode.json` | project | JSON |
 | Antigravity | `~/.gemini/antigravity/mcp_config.json` | global | JSON |
 | OpenClaw | `~/.openclaw/openclaw.json` | global | JSON5 |
+| Hermes | `~/.hermes/config.yaml` | global | YAML |
 
-> **Gotcha — global agents.** Antigravity and OpenClaw share a single config across every project on the machine. `add` and `deploy` leave them unchecked by default; tick them only if you really want a host-wide change.
+> **Gotcha — global agents.** Antigravity, OpenClaw and Hermes share a single config across every project on the machine. `add` and `deploy` leave them unchecked by default; tick them only if you really want a host-wide change.
 
 ## GitHub bundles (reverse-lookup)
 

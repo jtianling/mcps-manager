@@ -7,6 +7,7 @@ import { geminiCliAdapter } from "./gemini-cli.js";
 import { opencodeAdapter } from "./opencode.js";
 import { antigravityAdapter } from "./antigravity.js";
 import { openclawAdapter } from "./openclaw.js";
+import { hermesAdapter } from "./hermes.js";
 
 export const allAdapters: readonly AgentAdapter[] = [
   claudeCodeAdapter,
@@ -16,6 +17,7 @@ export const allAdapters: readonly AgentAdapter[] = [
   opencodeAdapter,
   antigravityAdapter,
   openclawAdapter,
+  hermesAdapter,
 ];
 
 export function getAdapter(id: AgentId): AgentAdapter {

@@ -20,7 +20,8 @@ export type AgentId =
   | "gemini-cli"
   | "opencode"
   | "antigravity"
-  | "openclaw";
+  | "openclaw"
+  | "hermes";
 
 export interface ServerDefinition {
   readonly name: string;
