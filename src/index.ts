@@ -48,8 +48,30 @@ program
     "--port <port>",
     "Override manifest variables.port (manifest-driven flow only)",
   )
-  .action((input: string, options: { agent?: string; port?: string }) =>
-    addCommand(input, options),
+  .option(
+    "-y",
+    "Skip all prompts: auto-select detected agents, overwrite existing central entries, fail-fast on missing required vars/env (implies --force)",
+  )
+  .option(
+    "-f, --force",
+    "Overwrite existing central server entries without confirmation",
+  )
+  .action(
+    (
+      input: string,
+      options: {
+        agent?: string;
+        port?: string;
+        y?: boolean;
+        force?: boolean;
+      },
+    ) =>
+      addCommand(input, {
+        agent: options.agent,
+        port: options.port,
+        yes: options.y,
+        force: options.force,
+      }),
   );
 
 program

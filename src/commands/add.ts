@@ -80,6 +80,8 @@ export function classifyAddInput(rawInput: string): AddInput {
 export interface AddOptions {
   readonly agent?: string;
   readonly port?: string;
+  readonly yes?: boolean;
+  readonly force?: boolean;
 }
 
 export interface AddDeps {
@@ -155,6 +157,10 @@ export async function runAdd(
     return;
   }
 
+  if (options.yes) {
+    options = { ...options, force: true };
+  }
+
   const resolved = await deps.resolveInput(serverInput);
 
   if (resolved.kind === "server") {
@@ -165,7 +171,7 @@ export async function runAdd(
       deps.setExitCode(1);
       return;
     }
-    await runAddFromCentral(resolved.name, options.agent as AgentId | undefined, deps);
+    await runAddFromCentral(resolved.name, options, deps);
     return;
   }
 
@@ -177,7 +183,7 @@ export async function runAdd(
       deps.setExitCode(1);
       return;
     }
-    await runAddFromBundle(resolved, options.agent as AgentId | undefined, deps);
+    await runAddFromBundle(resolved, options, deps);
     return;
   }
 
@@ -220,7 +226,7 @@ export async function runAdd(
 
 async function runAddFromCentral(
   serverName: string,
-  agentFlag: AgentId | undefined,
+  options: AddOptions,
   deps: AddDeps,
 ): Promise<void> {
   if (!deps.serverExists(serverName)) {
@@ -236,13 +242,26 @@ async function runAddFromCentral(
     deps.setExitCode(1);
     return;
   }
+  const agentFlag = options.agent as AgentId | undefined;
   const detectedIds = new Set(deps.detectAgentIds(deps.projectDir));
-  const selectedAgentIds = agentFlag
-    ? [agentFlag]
-    : await deps.promptAgents(
-        `Select agents to add "${serverName}" to:`,
-        detectedIds,
+  let selectedAgentIds: readonly AgentId[];
+  if (agentFlag) {
+    selectedAgentIds = [agentFlag];
+  } else if (options.yes) {
+    selectedAgentIds = [...detectedIds];
+    if (selectedAgentIds.length === 0) {
+      deps.error(
+        "Error: -y requires either --agent or at least one detected agent in the project.",
       );
+      deps.setExitCode(1);
+      return;
+    }
+  } else {
+    selectedAgentIds = await deps.promptAgents(
+      `Select agents to add "${serverName}" to:`,
+      detectedIds,
+    );
+  }
   if (selectedAgentIds.length === 0) {
     deps.print("No agents selected.");
     return;
@@ -264,16 +283,29 @@ async function runAddFromCentral(
 
 async function runAddFromBundle(
   bundle: Extract<ResolveResult, { readonly kind: "bundle" }>,
-  agentFlag: AgentId | undefined,
+  options: AddOptions,
   deps: AddDeps,
 ): Promise<void> {
+  const agentFlag = options.agent as AgentId | undefined;
   const detectedIds = new Set(deps.detectAgentIds(deps.projectDir));
-  const selectedAgentIds = agentFlag
-    ? [agentFlag]
-    : await deps.promptAgents(
-        `Select agents to add bundle "${bundle.url}" to:`,
-        detectedIds,
+  let selectedAgentIds: readonly AgentId[];
+  if (agentFlag) {
+    selectedAgentIds = [agentFlag];
+  } else if (options.yes) {
+    selectedAgentIds = [...detectedIds];
+    if (selectedAgentIds.length === 0) {
+      deps.error(
+        "Error: -y requires either --agent or at least one detected agent in the project.",
       );
+      deps.setExitCode(1);
+      return;
+    }
+  } else {
+    selectedAgentIds = await deps.promptAgents(
+      `Select agents to add bundle "${bundle.url}" to:`,
+      detectedIds,
+    );
+  }
   if (selectedAgentIds.length === 0) {
     deps.print("No agents selected.");
     return;
@@ -325,11 +357,7 @@ async function runAddFromGitHub(
     }
     const installedName = await deps.readmeFallbackInstall(source);
     if (!installedName) return;
-    await runAddFromCentral(
-      installedName,
-      options.agent as AgentId | undefined,
-      deps,
-    );
+    await runAddFromCentral(installedName, options, deps);
     return;
   }
 
@@ -364,6 +392,15 @@ async function runAddFromManifest(
       return;
     }
     selectedAgentIds = [id];
+  } else if (options.yes) {
+    selectedAgentIds = declaredAgentIds.filter((id) => detectedIds.has(id));
+    if (selectedAgentIds.length === 0) {
+      deps.error(
+        `Error: -y requires --agent when no manifest agent matches detected agents in the project. Manifest declares: ${declaredAgentIds.join(", ")}.`,
+      );
+      deps.setExitCode(1);
+      return;
+    }
   } else {
     selectedAgentIds = await deps.promptManifestAgents(
       declaredAgentIds,
@@ -383,6 +420,13 @@ async function runAddFromManifest(
   for (const [name, def] of Object.entries(manifest.variables ?? {})) {
     if (name === "port" && options.port !== undefined) continue;
     if (def.required === true && variableValues[name] === undefined) {
+      if (options.yes) {
+        deps.error(
+          `Error: -y cannot prompt for required variable '${name}'. Provide it explicitly (e.g. --port for 'port').`,
+        );
+        deps.setExitCode(1);
+        return;
+      }
       variableValues[name] = await deps.promptVariableValue(name, def);
     }
   }
@@ -390,8 +434,15 @@ async function runAddFromManifest(
   const envValues: Record<string, string> = {};
   for (const ev of manifest.envVars ?? []) {
     if (ev.required === true) {
+      if (options.yes) {
+        deps.error(
+          `Error: -y cannot prompt for required env var '${ev.name}'. Set it in the environment before running, or omit -y.`,
+        );
+        deps.setExitCode(1);
+        return;
+      }
       envValues[ev.name] = await deps.promptEnvValue(ev);
-    } else {
+    } else if (!options.yes) {
       const value = await deps.promptEnvValue(ev);
       if (value !== "") envValues[ev.name] = value;
     }
@@ -424,7 +475,9 @@ async function runAddFromManifest(
       if (deps.serverExists(def.name)) {
         // Pre-existing central record stays regardless of overwrite outcome.
         bundleMembers.add(def.name);
-        const ok = await deps.confirmOverwrite(def.name);
+        const ok = options.force
+          ? true
+          : await deps.confirmOverwrite(def.name);
         if (!ok) {
           deps.print(`  · skipped (central): ${def.name}`);
           continue;

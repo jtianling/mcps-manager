@@ -432,6 +432,155 @@ describe("runAdd github manifest flow", () => {
     );
   });
 
+  it("-y skips confirmOverwrite for pre-existing central entries", async () => {
+    const existing = new Set([
+      "cross-agent-teams",
+      "cross-agent-teams-channel",
+    ]);
+    const confirmOverwrite = vi.fn(async () => false);
+    const writeServerDefinition = vi.fn(async () => undefined);
+    const deps = buildDeps({
+      fetchManifest: async () => xatsManifest,
+      serverExists: (n) => existing.has(n),
+      confirmOverwrite,
+      writeServerDefinition,
+    });
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "claude-code", yes: true },
+      deps,
+    );
+    expect(confirmOverwrite).not.toHaveBeenCalled();
+    expect(writeServerDefinition).toHaveBeenCalledTimes(2);
+  });
+
+  it("-f (narrow force) skips confirmOverwrite without -y semantics", async () => {
+    const existing = new Set(["cross-agent-teams"]);
+    const confirmOverwrite = vi.fn(async () => false);
+    const writeServerDefinition = vi.fn(async () => undefined);
+    const deps = buildDeps({
+      fetchManifest: async () => xatsManifest,
+      serverExists: (n) => existing.has(n),
+      confirmOverwrite,
+      writeServerDefinition,
+    });
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "claude-code", force: true },
+      deps,
+    );
+    expect(confirmOverwrite).not.toHaveBeenCalled();
+    expect(writeServerDefinition).toHaveBeenCalledTimes(2);
+  });
+
+  it("-y with no --agent auto-selects intersection of declared+detected", async () => {
+    const promptManifestAgents = vi.fn();
+    const calledAgents: AgentId[] = [];
+    const writeToAgent = vi.fn(async (id: AgentId) => {
+      calledAgents.push(id);
+    });
+    const deps = buildDeps({
+      fetchManifest: async () => xatsManifest,
+      detectAgentIds: () => ["claude-code", "antigravity"] as AgentId[],
+      promptManifestAgents,
+      writeToAgent,
+    });
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { yes: true },
+      deps,
+    );
+    expect(promptManifestAgents).not.toHaveBeenCalled();
+    expect(new Set(calledAgents)).toEqual(new Set(["claude-code"]));
+  });
+
+  it("-y with no detected agents matching manifest errors out", async () => {
+    const deps = buildDeps({
+      fetchManifest: async () => xatsManifest,
+      detectAgentIds: () => [],
+    });
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { yes: true },
+      deps,
+    );
+    const d = getDiagnostics(deps);
+    expect(
+      d.__sink.error.some((l) =>
+        /-y requires --agent when no manifest agent matches detected agents/.test(
+          l,
+        ),
+      ),
+    ).toBe(true);
+    expect(d.__exitCode()).toBe(1);
+  });
+
+  it("-y errors when required variable has no value", async () => {
+    // Runtime path guards against missing `default` from untrusted JSON;
+    // schema marks it required so deliberately bypass the type to exercise it.
+    const m = {
+      ...xatsManifest,
+      variables: { token: { required: true } },
+    } as unknown as Manifest;
+    const promptVariableValue = vi.fn();
+    const deps = buildDeps({
+      fetchManifest: async () => m,
+      promptVariableValue,
+    });
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "claude-code", yes: true },
+      deps,
+    );
+    expect(promptVariableValue).not.toHaveBeenCalled();
+    const d = getDiagnostics(deps);
+    expect(
+      d.__sink.error.some((l) =>
+        /-y cannot prompt for required variable 'token'/.test(l),
+      ),
+    ).toBe(true);
+    expect(d.__exitCode()).toBe(1);
+  });
+
+  it("-y errors when required env var is unset", async () => {
+    const m: Manifest = {
+      ...xatsManifest,
+      envVars: [{ name: "REQUIRED_TOKEN", required: true, secret: true }],
+    };
+    const promptEnvValue = vi.fn();
+    const deps = buildDeps({
+      fetchManifest: async () => m,
+      promptEnvValue,
+    });
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "claude-code", yes: true },
+      deps,
+    );
+    expect(promptEnvValue).not.toHaveBeenCalled();
+    const d = getDiagnostics(deps);
+    expect(
+      d.__sink.error.some((l) =>
+        /-y cannot prompt for required env var 'REQUIRED_TOKEN'/.test(l),
+      ),
+    ).toBe(true);
+    expect(d.__exitCode()).toBe(1);
+  });
+
+  it("-y skips optional env var prompt entirely", async () => {
+    const promptEnvValue = vi.fn();
+    const deps = buildDeps({
+      fetchManifest: async () => xatsManifest,
+      promptEnvValue,
+    });
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "claude-code", yes: true },
+      deps,
+    );
+    expect(promptEnvValue).not.toHaveBeenCalled();
+  });
+
   it("envVar CROSS_AGENT_TEAMS_TOKEN prompted, header injected", async () => {
     let captured: DefaultConfig | undefined;
     const deps = buildDeps({

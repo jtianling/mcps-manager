@@ -79,6 +79,9 @@ mcpsmgr update
 | `mcpsmgr deploy` | | Deploy servers to agents in current project |
 | `mcpsmgr deploy --refresh` | | Sync central repository changes to project |
 | `mcpsmgr add <server>` | | Add a central server to current project |
+| `mcpsmgr add <src> -a <agent>` | | Target a specific agent without prompting |
+| `mcpsmgr add <src> -y` | | Unattended: auto-select detected agents, overwrite existing, fail-fast on missing required vars/env (implies `--force`) |
+| `mcpsmgr add <src> -f` | | Overwrite existing central entries without confirmation (narrow) |
 | `mcpsmgr remove <server>` | | Remove a server from current project |
 
 ## GitHub Bundle 反查
