@@ -1,6 +1,6 @@
 # mcpsmgr
 
-统一的 MCP (Model Context Protocol) 服务器管理工具 —— 一次定义, 同步部署到 Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity, OpenClaw 等多个 AI coding agent.
+统一的 MCP (Model Context Protocol) 服务器管理工具 —— 一次定义, 同步部署到 Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity, OpenClaw, Hermes Agent 等多个 AI coding agent.
 
 **[English](../README.md)**
 
@@ -102,8 +102,11 @@ mcpsmgr update [name]         # 重新分析源文档, 更新中央定义
 | OpenCode | `opencode.json` | 项目 | JSON |
 | Antigravity | `~/.gemini/antigravity/mcp_config.json` | 全局 | JSON |
 | OpenClaw | `~/.openclaw/openclaw.json` | 全局 | JSON5 |
+| Hermes Agent | `~/.hermes/config.yaml` | 全局 | YAML |
 
-> **坑 —— 全局 agent.** Antigravity 和 OpenClaw 在整台机器上共用同一份配置. `add` 和 `deploy` 默认不勾选这两个, 真要改全局再手动勾.
+> **坑 —— 全局 agent.** Antigravity, OpenClaw, Hermes Agent 在整台机器上共用同一份配置. `add` 和 `deploy` 默认不勾选这三个, 真要改全局再手动勾.
+>
+> **`-a` 可用的 agent id:** `claude-code`, `codex`, `cursor`, `gemini-cli`, `opencode`, `antigravity`, `openclaw`, `hermes-agent`.
 
 ## GitHub bundle (反查)
 

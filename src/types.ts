@@ -21,7 +21,7 @@ export type AgentId =
   | "opencode"
   | "antigravity"
   | "openclaw"
-  | "hermes";
+  | "hermes-agent";
 
 export interface ServerDefinition {
   readonly name: string;

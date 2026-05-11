@@ -19,11 +19,11 @@
 - [x] 3.1 添加 `yaml@^2.8.4` 依赖
   - kind: build-check
   - 命令: `pnpm add yaml`
-- [x] 3.2 在 `src/types.ts` 的 `AgentId` 联合类型尾部追加 `"hermes"`
+- [x] 3.2 在 `src/types.ts` 的 `AgentId` 联合类型尾部追加 `"hermes-agent"`
   - kind: unit-test
 - [x] 3.3 创建 `src/adapters/hermes.ts`:
   - kind: unit-test
-  - id: `"hermes"`, name: `"Hermes"`, isGlobal: `true`
+  - id: `"hermes-agent"`, name: `"Hermes Agent"`, isGlobal: `true`
   - configPath: `homedir() + /.hermes/config.yaml` (常量, 与 antigravity/openclaw 风格一致)
   - read/write/remove/has 操作顶层 `mcp_servers` 字段
   - `readYamlFile`: 不存在返回 `{}`; 用 `yaml.parse`
@@ -32,7 +32,7 @@
   - `fromAgentFormat`: `command` → stdio (env 用 `readEnvField` 把非 string 值 String 化); `url` → http; 都没有返回 undefined
 - [x] 3.4 在 `src/adapters/index.ts` 中导入 `hermesAdapter` 并追加到 `allAdapters` 末尾
   - kind: unit-test
-- [x] 3.5 在 `src/install/manifest-schema.ts` 的 `KNOWN_AGENT_IDS` 尾部追加 `"hermes"`
+- [x] 3.5 在 `src/install/manifest-schema.ts` 的 `KNOWN_AGENT_IDS` 尾部追加 `"hermes-agent"`
   - kind: unit-test
 - [x] 3.6 运行测试确认 2.1 全绿且既有用例不回归
   - kind: unit-test

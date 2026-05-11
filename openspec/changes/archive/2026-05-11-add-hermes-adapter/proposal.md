@@ -15,7 +15,7 @@ Hermes 跟现有 adapter 有几个显著差异:
 - stdio 写 `{ command, args, env? }` (native env mapping, 复用 `resolveEnvInArgs` 处理 `${VAR}` 替换), 无 env vars 时省略 env 字段
 - HTTP 写 `{ url, headers? }` (无 `type` 字段, headers 为空则省略)
 - `fromAgentFormat` 根据 `command` / `url` 推断 transport
-- 在 `AgentId` 类型与 manifest 已知 agent 列表中新增 `"hermes"`
+- 在 `AgentId` 类型与 manifest 已知 agent 列表中新增 `"hermes-agent"` (匹配上游仓库名 `nousresearch/hermes-agent`)
 - 注册到 `allAdapters`, 自动参与 detect/add/deploy/list/remove 等流程
 - README "Supported agents" 表 + global agents 提示语补 Hermes 一行
 - 新增 `yaml` 依赖 (`^2.8.4`) 处理 YAML 读写

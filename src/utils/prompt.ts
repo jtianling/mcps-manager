@@ -4,5 +4,6 @@ export function isUserCancellation(error: unknown): boolean {
 
 export const CHECKBOX_DEFAULTS = {
   loop: false,
+  pageSize: 12,
   theme: { keybindings: ["vim"] },
 } as const;

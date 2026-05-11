@@ -85,7 +85,7 @@ const KNOWN_AGENT_IDS: readonly AgentId[] = [
   "opencode",
   "antigravity",
   "openclaw",
-  "hermes",
+  "hermes-agent",
 ];
 
 const VALID_TRANSPORTS: readonly ManifestTransport[] = [

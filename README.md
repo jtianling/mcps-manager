@@ -1,6 +1,6 @@
 # mcpsmgr
 
-Unified MCP (Model Context Protocol) server manager for multiple AI coding agents — define MCP servers once, sync them to Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity, and OpenClaw from one place.
+Unified MCP (Model Context Protocol) server manager for multiple AI coding agents — define MCP servers once, sync them to Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity, OpenClaw, and Hermes Agent from one place.
 
 **[中文文档](./docs/README_zh-CN.md)**
 
@@ -102,9 +102,11 @@ mcpsmgr update [name]         # re-analyze sources and patch central definitions
 | OpenCode | `opencode.json` | project | JSON |
 | Antigravity | `~/.gemini/antigravity/mcp_config.json` | global | JSON |
 | OpenClaw | `~/.openclaw/openclaw.json` | global | JSON5 |
-| Hermes | `~/.hermes/config.yaml` | global | YAML |
+| Hermes Agent | `~/.hermes/config.yaml` | global | YAML |
 
-> **Gotcha — global agents.** Antigravity, OpenClaw and Hermes share a single config across every project on the machine. `add` and `deploy` leave them unchecked by default; tick them only if you really want a host-wide change.
+> **Gotcha — global agents.** Antigravity, OpenClaw, and Hermes Agent share a single config across every project on the machine. `add` and `deploy` leave them unchecked by default; tick them only if you really want a host-wide change.
+>
+> **Agent ids for `-a` flag.** `claude-code`, `codex`, `cursor`, `gemini-cli`, `opencode`, `antigravity`, `openclaw`, `hermes-agent`.
 
 ## GitHub bundles (reverse-lookup)
 

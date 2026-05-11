@@ -89,8 +89,8 @@ async function writeYamlFile(
 }
 
 export const hermesAdapter: AgentAdapter = {
-  id: "hermes",
-  name: "Hermes",
+  id: "hermes-agent",
+  name: "Hermes Agent",
   configPath: () => GLOBAL_CONFIG_PATH,
   isGlobal: true,
 
