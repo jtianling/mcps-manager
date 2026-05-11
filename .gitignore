@@ -104,6 +104,7 @@ coverage/
 .agents/
 .codex/
 .gemini/
+.cursor/
 .e2e-test/
 
 # mcpsmgr local artifacts
