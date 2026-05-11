@@ -1,104 +1,97 @@
 # mcpsmgr
 
-Unified MCP (Model Context Protocol) server manager for multiple AI coding agents.
+Unified MCP (Model Context Protocol) server manager for multiple AI coding agents — define MCP servers once, sync them to Claude Code, Codex, Cursor, Gemini CLI, OpenCode, and Antigravity from one place.
 
 **[中文文档](./docs/README_zh-CN.md)**
-
-## Problem
-
-Each AI coding agent (Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity) uses its own config format for MCP servers. Managing the same servers across multiple agents means editing multiple config files manually, which is tedious and error-prone.
-
-## Solution
-
-`mcpsmgr` provides a central repository for MCP server definitions and syncs them to all your coding agents with a single command. Define once, deploy everywhere.
-
-```
-Central Repository          Agent Configs
-┌──────────────────┐   ┌─► Claude Code (.claude.json)
-│  server-a (stdio)│───┼─► Codex   (.codex/config.toml)
-│  server-b (http) │   ├─► Cursor      (.cursor/mcp.json)
-│  server-c (stdio)│   ├─► Gemini CLI  (.gemini/settings.json)
-└──────────────────┘   ├─► OpenCode    (.opencode.json)
-                       └─► Antigravity (.antigravity/config.json)
-```
-
-## Features
-
-- **Central server repository** - Define MCP servers once in `~/.mcps-manager/servers/`
-- **Multi-agent support** - Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Antigravity
-- **Rule-based README parsing** - Provide a GitHub URL or `owner/repo` and `mcpsmgr` extracts the config from `claude mcp add` lines or `mcpServers` JSON blocks in the README
-- **GitHub bundle 反查** - 通过 GitHub manifest 安装的多服务器仓库会记录 `repoName` 和 `bundleId`, 后续可用 `owner/repo`, GitHub URL, 或 repo basename 直接添加同一组服务器
-- **Local source support** - Install from a `*.json` file (any agent's MCP config shape) or from a project directory (auto-detects `package.json` / `pyproject.toml`)
-- **Per-agent overrides** - Customize server config for specific agents when needed
-- **Project-level deploy** - Deploy selected servers to detected agents in any project
-- **Refresh** - Push central repository updates to all agent configs
-
-## Installation
-
-```bash
-# From source
-pnpm install
-pnpm build
-npm link
-```
 
 ## Quick Start
 
 ```bash
-# 1. Install a server to central repository
-mcpsmgr install anthropics/some-mcp-server                # GitHub owner/repo
-mcpsmgr install https://github.com/anthropics/some-repo   # GitHub URL
-mcpsmgr install ./my-mcp.json                             # Local JSON config
-mcpsmgr install ~/workspace/my-mcp-server                 # Local project dir
+# Install one or many MCP servers from a GitHub repo
+npx mcpsmgr add jtianling/cross-agent-teams-mcp -a claude-code -y
 
-# 2. Deploy servers to agents in current project
-cd your-project
-mcpsmgr deploy
-
-# 3. Add a specific server to the current project
-mcpsmgr add my-server
-mcpsmgr add anthropics/some-mcp-server                   # GitHub source
-mcpsmgr add some-mcp-server                              # Installed repo basename bundle
-
-# 4. Sync central changes to project agents
-mcpsmgr deploy --refresh
-
-# 5. Update installed servers from their sources
-mcpsmgr update
+# Or interactively pick which agent to deploy to
+npx mcpsmgr add anthropics/some-mcp-server
 ```
 
-## Commands
+That's it. `mcpsmgr` fetches the repo's `mcpsmgr.json` manifest (or falls back to README scanning), records the server in your central repository at `~/.mcps-manager/servers/`, and writes the right config into your agent's native file (`.claude.json`, `.codex/config.toml`, etc.).
 
-| Command | Alias | Description |
-|---|---|---|
-| `mcpsmgr install [source]` | | Install a server (GitHub URL, owner/repo, local JSON, local dir, or manual) |
-| `mcpsmgr uninstall <name>` | | Remove a server from central repository |
-| `mcpsmgr update [name]` | | Update installed servers by re-analyzing their source documentation |
-| `mcpsmgr list` | | List all servers in central repository |
-| `mcpsmgr list --deployed` | | List MCP servers across all agents in current project |
-| `mcpsmgr deploy` | | Deploy servers to agents in current project |
-| `mcpsmgr deploy --refresh` | | Sync central repository changes to project |
-| `mcpsmgr add <server>` | | Add a central server to current project |
-| `mcpsmgr add <src> -a <agent>` | | Target a specific agent without prompting |
-| `mcpsmgr add <src> -y` | | Unattended: auto-select detected agents, overwrite existing, fail-fast on missing required vars/env (implies `--force`) |
-| `mcpsmgr add <src> -f` | | Overwrite existing central entries without confirmation (narrow) |
-| `mcpsmgr remove <server>` | | Remove a server from current project |
+Need to deploy already-installed servers into a fresh project? `cd` into the project and run `npx mcpsmgr deploy`.
 
-## GitHub Bundle 反查
+## Install
 
-从 GitHub source 安装服务时, `mcpsmgr` 会把归一化后的仓库 URL 写入 `~/.mcps-manager/bundles.json`, 并在每个 server definition 上保存可选的 `repoName` 和 `bundleId`.  这让同一个远端仓库的多 server manifest 可以被三种输入精准命中:
+```bash
+npm install -g mcpsmgr     # or pnpm add -g / yarn global add
+```
 
-- `mcpsmgr add owner/repo`
-- `mcpsmgr add https://github.com/owner/repo`
-- `mcpsmgr add repo` (当中央仓库没有同名 server, 且已安装条目的 `repoName` 等于 `repo`)
+Or run anywhere without installing:
 
-`add` 会先解析本地 server 或 bundle.  命中后只写入选定 agent, 不重新拉取 manifest, 不询问覆盖中央仓库.  只有 `owner/repo` 或 GitHub URL 在本地找不到 bundle 时, 才会走远端 manifest 或 README fallback.
+```bash
+npx mcpsmgr <command>
+```
 
-`install` 会在 GitHub 来源成功写入 server 后同步更新 bundle members.  本地路径和手动安装不会写入 `repoName` / `bundleId`.
+## Adding servers to a project (`add`)
 
-`uninstall <name>` 删除中央 server 时, 如果该 server 属于某个 bundle, 会同步从 `bundles.json` 的 members 中移除它.  最后一个 member 被移除后, 对应 bundle 条目会自动删除.
+`mcpsmgr add` is the main entry point. It accepts three input shapes:
 
-## Supported Agents
+```bash
+mcpsmgr add my-server                                  # already in central repo
+mcpsmgr add owner/repo                                 # GitHub shorthand
+mcpsmgr add https://github.com/owner/repo              # full GitHub URL
+mcpsmgr add repo                                       # repo basename (bundle reverse-lookup)
+```
+
+The resolver picks the matching central entry or bundle when one exists, and falls back to fetching the manifest only when nothing is cached locally. This means re-running `add owner/repo` after the first install is fast and offline-safe.
+
+### Useful flags
+
+```
+-a, --agent <id>     Target a specific agent without prompting
+-y                   Unattended: auto-select detected agents, overwrite existing,
+                     fail-fast on missing required vars/env (implies --force)
+-f, --force          Overwrite existing central entries without confirmation
+--port <number>      Override manifest variables.port (manifest-driven flow)
+```
+
+`-y` is the CI-friendly switch: one flag, no prompts. It will refuse rather than silently substitute defaults when a required variable or env var is missing — set those explicitly before re-running.
+
+## Installing servers into the central repository (`install`)
+
+`add` writes to the central repository as a side effect when it pulls a remote manifest. If you only want to register a server without touching any project, use `install`:
+
+```bash
+mcpsmgr install owner/repo                  # GitHub source (manifest or README scan)
+mcpsmgr install https://github.com/o/r
+mcpsmgr install ./my-mcp.json               # any agent's MCP JSON shape
+mcpsmgr install ~/workspace/my-mcp-server   # local project directory
+mcpsmgr install                             # interactive manual flow
+```
+
+GitHub sources also update `~/.mcps-manager/bundles.json` so later `add repo` calls can resolve back to every server the repo declared.
+
+## Deploying to agents (`deploy`)
+
+```bash
+cd your-project
+mcpsmgr deploy             # pick which central servers to deploy
+mcpsmgr deploy --refresh   # re-sync existing project entries from central
+```
+
+`deploy` autodetects which agents the project already uses (presence of `.claude.json`, `.codex/`, etc.) and only writes to those. `--refresh` is the right command after you tweak a server definition in the central repository and want every project to pick up the change.
+
+## Inspecting and removing
+
+```bash
+mcpsmgr list                  # central repository
+mcpsmgr list --deployed       # what's wired up in the current project
+mcpsmgr remove <name>         # remove from the current project (per-agent prompt)
+mcpsmgr uninstall <name>      # remove from the central repository
+mcpsmgr update [name]         # re-analyze sources and patch central definitions
+```
+
+`remove` only touches project agent configs. `uninstall` removes the central entry (and prunes it from any bundle it belongs to).
+
+## Supported agents
 
 | Agent | Config Location | Format |
 |---|---|---|
@@ -109,13 +102,21 @@ mcpsmgr update
 | OpenCode | `.opencode.json` (project) | JSON |
 | Antigravity | `.antigravity/config.json` (project) | JSON |
 
-## How It Works
+> **Gotcha — global agents.** Gemini CLI is configured globally rather than per-project. `add` and `deploy` will warn before writing to it; review the diff before saying yes.
 
-1. **Central Repository** (`~/.mcps-manager/servers/`) stores server definitions as JSON files, each containing the server name, source, optional GitHub bundle metadata, default config, and per-agent overrides.  `~/.mcps-manager/bundles.json` stores GitHub bundle to server members mappings.
+## GitHub bundles (reverse-lookup)
 
-2. **Agent Adapters** understand each agent's config format. When deploying, `mcpsmgr` resolves the final config (default + overrides) and writes it in the agent's native format.
+When a single GitHub repo declares multiple MCP servers via `mcpsmgr.json`, `mcpsmgr` records them as one **bundle**. After the first install, any of these inputs resolve to the same set of servers without going back to the network:
 
-3. **Rule-based README analysis** runs deterministically when installing from a GitHub source. It scans the README for `claude mcp add ...` lines inside fenced code blocks, then for `mcpServers` JSON blocks, then bare `{command, args}` blocks, and finally falls back to `package.json` / `pyproject.toml` lookups. If no shape matches, the install drops to the manual prompt flow.
+```bash
+mcpsmgr add jtianling/cross-agent-teams-mcp        # owner/repo
+mcpsmgr add https://github.com/jtianling/cross-agent-teams-mcp
+mcpsmgr add cross-agent-teams-mcp                  # bare repo name
+```
+
+Bundles are stored in `~/.mcps-manager/bundles.json`. `install` updates the bundle membership on every successful manifest install; `uninstall <name>` prunes the member and drops the bundle when it becomes empty.
+
+> **Gotcha — repo-name collisions.** If two different GitHub owners publish repos with the same basename and you've installed both, `mcpsmgr add <basename>` will refuse with a list of candidates. Disambiguate with `owner/repo`.
 
 ## License
 
