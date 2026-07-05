@@ -315,3 +315,105 @@ describe("applyManifest perAgent ServerDefinition shape", () => {
     }
   });
 });
+
+describe("applyManifest bearerTokenEnvVar", () => {
+  it("fills bearerTokenEnvVar on http configs when the token value is provided", () => {
+    const out = applyManifest({
+      manifest: baseManifest,
+      source: "owner/repo",
+      variableValues: { port: "9100" },
+      envValues: { TOKEN: "abc123" },
+      agentIds: ["codex"],
+    });
+    const cfg = out.perAgent["codex"]![0]!.default;
+    expect(cfg).toEqual({
+      transport: "http",
+      url: "http://127.0.0.1:9100/mcp",
+      headers: { Authorization: "Bearer abc123" },
+      bearerTokenEnvVar: "TOKEN",
+    });
+  });
+
+  it("fills bearerTokenEnvVar even when the token value is absent", () => {
+    const out = applyManifest({
+      manifest: baseManifest,
+      source: "owner/repo",
+      variableValues: { port: "9100" },
+      envValues: {},
+      agentIds: ["codex"],
+    });
+    const cfg = out.perAgent["codex"]![0]!.default;
+    expect(cfg).toEqual({
+      transport: "http",
+      url: "http://127.0.0.1:9100/mcp",
+      headers: {},
+      bearerTokenEnvVar: "TOKEN",
+    });
+  });
+
+  it("does not fill bearerTokenEnvVar for non Authorization-Bearer envVars", () => {
+    const manifest: Manifest = {
+      ...baseManifest,
+      prerequisites: [],
+      envVars: [
+        {
+          name: "API_KEY",
+          required: false,
+          appliedAs: { kind: "header", name: "X-Api-Key", format: "${VALUE}" },
+        },
+      ],
+    };
+    const out = applyManifest({
+      manifest,
+      source: "owner/repo",
+      variableValues: { port: "9100" },
+      envValues: { API_KEY: "k" },
+      agentIds: ["codex"],
+    });
+    const cfg = out.perAgent["codex"]![0]!.default;
+    expect(cfg).toEqual({
+      transport: "http",
+      url: "http://127.0.0.1:9100/mcp",
+      headers: { "X-Api-Key": "k" },
+    });
+    expect(cfg).not.toHaveProperty("bearerTokenEnvVar");
+  });
+
+  it("matches Authorization case-insensitively", () => {
+    const manifest: Manifest = {
+      ...baseManifest,
+      envVars: [
+        {
+          name: "TOKEN",
+          required: false,
+          appliedAs: {
+            kind: "header",
+            name: "authorization",
+            format: "Bearer ${VALUE}",
+          },
+        },
+      ],
+    };
+    const out = applyManifest({
+      manifest,
+      source: "owner/repo",
+      variableValues: { port: "9100" },
+      envValues: {},
+      agentIds: ["codex"],
+    });
+    const cfg = out.perAgent["codex"]![0]!.default;
+    expect(cfg).toMatchObject({ bearerTokenEnvVar: "TOKEN" });
+  });
+
+  it("does not touch stdio configs", () => {
+    const out = applyManifest({
+      manifest: baseManifest,
+      source: "owner/repo",
+      variableValues: { port: "9100" },
+      envValues: {},
+      agentIds: ["claude-code"],
+    });
+    const stdio = out.perAgent["claude-code"]![1]!.default;
+    expect(stdio).not.toHaveProperty("bearerTokenEnvVar");
+  });
+});

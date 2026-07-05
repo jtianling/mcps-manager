@@ -51,9 +51,17 @@ The resolver picks the matching central entry or bundle when one exists, and fal
                      fail-fast on missing required vars/env (implies --force)
 -f, --force          Overwrite existing central entries without confirmation
 --port <number>      Override manifest variables.port (manifest-driven flow)
+--global             Write agent config to the agent's global config location
+                     instead of the project (currently codex only: ~/.codex/config.toml)
+--var <name=value>   Provide manifest env var / variable values non-interactively
+                     (repeatable, manifest-driven flow)
 ```
 
 `-y` is the CI-friendly switch: one flag, no prompts. It will refuse rather than silently substitute defaults when a required variable or env var is missing — set those explicitly before re-running.
+
+Manifest env var values resolve in priority order `--var` > process environment > interactive prompt, so an exported token (or an explicit `--var NAME=VALUE`) makes `add` fully non-interactive even without `-y`.
+
+Codex-specific behavior: HTTP servers get a top-level `experimental_use_rmcp_client = true` compatibility switch (older Codex requires it to load streamable-http MCP servers; newer versions default to rmcp and tolerate the key), and a manifest env var applied as an `Authorization: Bearer` header is written as `bearer_token_env_var = "<NAME>"` instead of a plaintext header — the token stays in the environment, never in the config file. Use `--global` when Codex runs with `--remote`/app-server, which loads MCP servers from `~/.codex/config.toml` (CODEX_HOME) rather than the project-level file.
 
 ## Installing servers into the central repository (`install`)
 

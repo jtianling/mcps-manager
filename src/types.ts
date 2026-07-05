@@ -9,6 +9,7 @@ export interface HttpConfig {
   readonly transport: "http";
   readonly url: string;
   readonly headers: Readonly<Record<string, string>>;
+  readonly bearerTokenEnvVar?: string;
 }
 
 export type DefaultConfig = StdioConfig | HttpConfig;
@@ -37,6 +38,7 @@ export interface AgentAdapter {
   readonly name: string;
   readonly configPath: (projectDir: string) => string;
   readonly isGlobal: boolean;
+  readonly globalDir?: () => string;
   read(projectDir: string): Promise<Record<string, unknown>>;
   write(
     projectDir: string,

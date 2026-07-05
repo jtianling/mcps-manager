@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { homedir } from "node:os";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname } from "node:path";
@@ -21,10 +22,20 @@ function toAgentFormat(config: DefaultConfig): Record<string, unknown> {
     }
     return nativeConfig;
   }
+  const headers = config.bearerTokenEnvVar
+    ? Object.fromEntries(
+        Object.entries(config.headers).filter(
+          ([key]) => key.toLowerCase() !== "authorization",
+        ),
+      )
+    : { ...config.headers };
   return {
     type: "streamable-http",
     url: config.url,
-    http_headers: { ...config.headers },
+    ...(config.bearerTokenEnvVar
+      ? { bearer_token_env_var: config.bearerTokenEnvVar }
+      : {}),
+    ...(Object.keys(headers).length > 0 ? { http_headers: headers } : {}),
   };
 }
 
@@ -68,10 +79,14 @@ function fromAgentFormat(
     return { transport: "stdio", command, args: rawArgs, env: {} };
   }
   if (raw["url"]) {
+    const bearer = raw["bearer_token_env_var"];
     return {
       transport: "http",
       url: raw["url"] as string,
       headers: (raw["http_headers"] as Record<string, string>) ?? {},
+      ...(typeof bearer === "string" && bearer !== ""
+        ? { bearerTokenEnvVar: bearer }
+        : {}),
     };
     // Note: 'type' field (streamable-http) is dropped on read since DefaultConfig
     // does not distinguish HTTP variants; codex adapter re-emits it on write.
@@ -106,6 +121,7 @@ export const codexAdapter: AgentAdapter = {
   name: "Codex",
   configPath: (projectDir) => join(projectDir, ".codex", "config.toml"),
   isGlobal: false,
+  globalDir: () => homedir(),
 
   toAgentFormat,
   fromAgentFormat,
@@ -125,10 +141,18 @@ export const codexAdapter: AgentAdapter = {
         `Conflict: "${serverName}" already exists in Codex config`,
       );
     }
-    const updated = {
+    const updated: Record<string, unknown> = {
       ...parsed,
       mcp_servers: { ...servers, [serverName]: toAgentFormat(config) },
     };
+    if (
+      config.transport === "http" &&
+      !("experimental_use_rmcp_client" in parsed)
+    ) {
+      // Older Codex versions load streamable-http MCP servers only with this
+      // top-level switch; newer versions default to rmcp and tolerate the key.
+      updated["experimental_use_rmcp_client"] = true;
+    }
     await writeTomlFile(filePath, updated);
   },
 

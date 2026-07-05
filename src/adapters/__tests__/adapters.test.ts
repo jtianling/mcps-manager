@@ -392,4 +392,18 @@ describe("OpenCode Adapter", () => {
       headers: {},
     });
   });
+
+  it("omits headers key when http headers are empty", async () => {
+    await opencodeAdapter.write(tmpDir, "my-mcp", {
+      transport: "http",
+      url: "https://example.com/mcp",
+      headers: {},
+    });
+    const servers = await opencodeAdapter.read(tmpDir);
+    expect(servers["my-mcp"]).toEqual({
+      type: "remote",
+      url: "https://example.com/mcp",
+    });
+    expect(servers["my-mcp"]).not.toHaveProperty("headers");
+  });
 });

@@ -82,6 +82,8 @@ export interface AddOptions {
   readonly port?: string;
   readonly yes?: boolean;
   readonly force?: boolean;
+  readonly global?: boolean;
+  readonly vars?: readonly string[];
 }
 
 export interface AddDeps {
@@ -116,6 +118,7 @@ export interface AddDeps {
     def: ManifestVariable,
   ) => Promise<string>;
   readonly promptEnvValue: (ev: ManifestEnvVar) => Promise<string>;
+  readonly readEnvVar: (name: string) => string | undefined;
   readonly confirmOverwrite: (name: string) => Promise<boolean>;
   readonly writeToAgent: (
     agentId: AgentId,
@@ -164,25 +167,13 @@ export async function runAdd(
   const resolved = await deps.resolveInput(serverInput);
 
   if (resolved.kind === "server") {
-    if (options.port !== undefined) {
-      deps.error(
-        "Error: --port only applies to manifest-driven add (GitHub source)",
-      );
-      deps.setExitCode(1);
-      return;
-    }
+    if (!checkManifestOnlyFlags(options, deps)) return;
     await runAddFromCentral(resolved.name, options, deps);
     return;
   }
 
   if (resolved.kind === "bundle") {
-    if (options.port !== undefined) {
-      deps.error(
-        "Error: --port only applies to manifest-driven add (GitHub source)",
-      );
-      deps.setExitCode(1);
-      return;
-    }
+    if (!checkManifestOnlyFlags(options, deps)) return;
     await runAddFromBundle(resolved, options, deps);
     return;
   }
@@ -222,6 +213,69 @@ export async function runAdd(
     "Error: Invalid input. Provide a GitHub URL (https://github.com/owner/repo), owner/repo shortname, or a central server name (kebab-case).",
   );
   deps.setExitCode(1);
+}
+
+function checkManifestOnlyFlags(options: AddOptions, deps: AddDeps): boolean {
+  if (options.port !== undefined) {
+    deps.error(
+      "Error: --port only applies to manifest-driven add (GitHub source)",
+    );
+    deps.setExitCode(1);
+    return false;
+  }
+  if ((options.vars?.length ?? 0) > 0) {
+    deps.error(
+      "Error: --var only applies to manifest-driven add (GitHub source)",
+    );
+    deps.setExitCode(1);
+    return false;
+  }
+  return true;
+}
+
+function ensureGlobalSupported(
+  agentIds: readonly AgentId[],
+  deps: AddDeps,
+): boolean {
+  for (const id of agentIds) {
+    const adapter = getAdapter(id);
+    if (adapter.isGlobal) {
+      deps.error(
+        `Error: agent '${id}' config is already global; --global is unnecessary.`,
+      );
+      deps.setExitCode(1);
+      return false;
+    }
+    if (!adapter.globalDir) {
+      deps.error(`Error: --global is not supported for agent '${id}'.`);
+      deps.setExitCode(1);
+      return false;
+    }
+  }
+  return true;
+}
+
+function agentTargetDir(
+  id: AgentId,
+  options: AddOptions,
+  deps: AddDeps,
+): string {
+  const globalDir = getAdapter(id).globalDir;
+  return options.global && globalDir ? globalDir() : deps.projectDir;
+}
+
+function parseVarFlags(
+  entries: readonly string[],
+): { readonly values: Record<string, string> } | { readonly error: string } {
+  const values: Record<string, string> = {};
+  for (const entry of entries) {
+    const idx = entry.indexOf("=");
+    if (idx <= 0) {
+      return { error: `invalid --var '${entry}', expected NAME=VALUE` };
+    }
+    values[entry.slice(0, idx)] = entry.slice(idx + 1);
+  }
+  return { values };
 }
 
 async function runAddFromCentral(
@@ -266,12 +320,18 @@ async function runAddFromCentral(
     deps.print("No agents selected.");
     return;
   }
+  if (options.global && !ensureGlobalSupported(selectedAgentIds, deps)) return;
 
   for (const id of selectedAgentIds) {
     const adapter = getAdapter(id);
     try {
       const config = resolveConfig(definition, adapter);
-      await deps.writeToAgent(id, deps.projectDir, serverName, config);
+      await deps.writeToAgent(
+        id,
+        agentTargetDir(id, options, deps),
+        serverName,
+        config,
+      );
       deps.print(`  + ${serverName} -> ${adapter.name}`);
     } catch (error) {
       deps.warn(
@@ -310,6 +370,7 @@ async function runAddFromBundle(
     deps.print("No agents selected.");
     return;
   }
+  if (options.global && !ensureGlobalSupported(selectedAgentIds, deps)) return;
 
   for (const serverName of bundle.members) {
     const definition = await deps.readServerDefinition(serverName);
@@ -321,7 +382,12 @@ async function runAddFromBundle(
       const adapter = getAdapter(id);
       try {
         const config = resolveConfig(definition, adapter);
-        await deps.writeToAgent(id, deps.projectDir, serverName, config);
+        await deps.writeToAgent(
+          id,
+          agentTargetDir(id, options, deps),
+          serverName,
+          config,
+        );
         deps.print(`  + ${serverName} -> ${adapter.name}`);
       } catch (error) {
         deps.warn(
@@ -355,6 +421,11 @@ async function runAddFromGitHub(
         "Warning: --port is ignored in README fallback (manifest absent)",
       );
     }
+    if ((options.vars?.length ?? 0) > 0) {
+      deps.warn(
+        "Warning: --var is ignored in README fallback (manifest absent)",
+      );
+    }
     const installedName = await deps.readmeFallbackInstall(source);
     if (!installedName) return;
     await runAddFromCentral(installedName, options, deps);
@@ -378,6 +449,27 @@ async function runAddFromManifest(
     );
     deps.setExitCode(1);
     return;
+  }
+
+  const parsedVars = parseVarFlags(options.vars ?? []);
+  if ("error" in parsedVars) {
+    deps.error(`Error: ${parsedVars.error}`);
+    deps.setExitCode(1);
+    return;
+  }
+  const varFlagValues = parsedVars.values;
+  const declaredVarNames = [
+    ...(manifest.envVars ?? []).map((ev) => ev.name),
+    ...Object.keys(manifest.variables ?? {}),
+  ];
+  for (const name of Object.keys(varFlagValues)) {
+    if (!declaredVarNames.includes(name)) {
+      deps.error(
+        `Error: --var '${name}' is not declared in the manifest. Declared: ${declaredVarNames.join(", ") || "(none)"}`,
+      );
+      deps.setExitCode(1);
+      return;
+    }
   }
 
   const detectedIds = new Set(deps.detectAgentIds(deps.projectDir));
@@ -412,17 +504,23 @@ async function runAddFromManifest(
     deps.print("No agents selected.");
     return;
   }
+  if (options.global && !ensureGlobalSupported(selectedAgentIds, deps)) return;
 
   const variableValues: Record<string, string> = {
     ...collectVariableDefaults(manifest),
   };
+  for (const name of Object.keys(manifest.variables ?? {})) {
+    if (varFlagValues[name] !== undefined) {
+      variableValues[name] = varFlagValues[name];
+    }
+  }
   if (options.port !== undefined) variableValues["port"] = options.port;
   for (const [name, def] of Object.entries(manifest.variables ?? {})) {
     if (name === "port" && options.port !== undefined) continue;
     if (def.required === true && variableValues[name] === undefined) {
       if (options.yes) {
         deps.error(
-          `Error: -y cannot prompt for required variable '${name}'. Provide it explicitly (e.g. --port for 'port').`,
+          `Error: -y cannot prompt for required variable '${name}'. Provide it explicitly (e.g. --port for 'port', or --var ${name}=...).`,
         );
         deps.setExitCode(1);
         return;
@@ -433,6 +531,19 @@ async function runAddFromManifest(
 
   const envValues: Record<string, string> = {};
   for (const ev of manifest.envVars ?? []) {
+    const fromFlag = varFlagValues[ev.name];
+    const fromEnv = deps.readEnvVar(ev.name);
+    const nonInteractive =
+      fromFlag !== undefined && fromFlag !== ""
+        ? { value: fromFlag, source: "--var" }
+        : fromEnv !== undefined && fromEnv !== ""
+          ? { value: fromEnv, source: "environment" }
+          : undefined;
+    if (nonInteractive !== undefined) {
+      envValues[ev.name] = nonInteractive.value;
+      deps.print(`  · ${ev.name}: using value from ${nonInteractive.source}`);
+      continue;
+    }
     if (ev.required === true) {
       if (options.yes) {
         deps.error(
@@ -487,7 +598,12 @@ async function runAddFromManifest(
       bundleMembers.add(def.name);
       deps.print(`  + ${def.name} -> central repository`);
       try {
-        await deps.writeToAgent(id, deps.projectDir, def.name, def.default);
+        await deps.writeToAgent(
+          id,
+          agentTargetDir(id, options, deps),
+          def.name,
+          def.default,
+        );
         deps.print(`  + ${def.name} -> ${adapter.name}`);
       } catch (error) {
         deps.warn(
@@ -549,6 +665,7 @@ function productionAddDeps(): AddDeps {
         message: def.prompt ?? `Enter value for ${name}:`,
         default: def.default,
       }),
+    readEnvVar: (name) => process.env[name],
     promptEnvValue: (ev) =>
       ev.secret
         ? password({

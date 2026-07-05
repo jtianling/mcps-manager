@@ -163,4 +163,134 @@ describe("Codex Adapter http", () => {
     expect(raw).not.toContain("[mcp_servers.my-mcp.headers]");
     expect(raw).not.toContain("\nheaders =");
   });
+
+  it("omits http_headers entirely when headers are empty", () => {
+    const result = codexAdapter.toAgentFormat({
+      transport: "http",
+      url: "https://example.com/mcp",
+      headers: {},
+    });
+
+    expect(result).toEqual({
+      type: "streamable-http",
+      url: "https://example.com/mcp",
+    });
+    expect(result).not.toHaveProperty("http_headers");
+  });
+
+  it("reads http entry without http_headers as empty headers", () => {
+    const result = codexAdapter.fromAgentFormat("my-mcp", {
+      url: "https://example.com/mcp",
+    });
+
+    expect(result).toEqual({
+      transport: "http",
+      url: "https://example.com/mcp",
+      headers: {},
+    });
+  });
+});
+
+describe("Codex Adapter bearer_token_env_var", () => {
+  const bearerConfig: HttpConfig = {
+    transport: "http",
+    url: "https://example.com/mcp",
+    headers: { Authorization: "Bearer plain-token", "X-Extra": "1" },
+    bearerTokenEnvVar: "CROSS_AGENT_TEAMS_MCP_TOKEN",
+  };
+
+  it("writes bearer_token_env_var and never a plaintext Authorization header", () => {
+    const result = codexAdapter.toAgentFormat(bearerConfig);
+
+    expect(result).toEqual({
+      type: "streamable-http",
+      url: "https://example.com/mcp",
+      bearer_token_env_var: "CROSS_AGENT_TEAMS_MCP_TOKEN",
+      http_headers: { "X-Extra": "1" },
+    });
+  });
+
+  it("omits http_headers when Authorization was the only header", () => {
+    const result = codexAdapter.toAgentFormat({
+      ...bearerConfig,
+      headers: { Authorization: "Bearer plain-token" },
+    });
+
+    expect(result).toEqual({
+      type: "streamable-http",
+      url: "https://example.com/mcp",
+      bearer_token_env_var: "CROSS_AGENT_TEAMS_MCP_TOKEN",
+    });
+  });
+
+  it("reads bearer_token_env_var back", () => {
+    const result = codexAdapter.fromAgentFormat("my-mcp", {
+      url: "https://example.com/mcp",
+      bearer_token_env_var: "CROSS_AGENT_TEAMS_MCP_TOKEN",
+    });
+
+    expect(result).toEqual({
+      transport: "http",
+      url: "https://example.com/mcp",
+      headers: {},
+      bearerTokenEnvVar: "CROSS_AGENT_TEAMS_MCP_TOKEN",
+    });
+  });
+
+  it("round-trips bearerTokenEnvVar without resurrecting Authorization", () => {
+    const raw = codexAdapter.toAgentFormat(bearerConfig);
+    const result = codexAdapter.fromAgentFormat(
+      "my-mcp",
+      raw as Record<string, unknown>,
+    );
+
+    expect(result).toEqual({
+      transport: "http",
+      url: "https://example.com/mcp",
+      headers: { "X-Extra": "1" },
+      bearerTokenEnvVar: "CROSS_AGENT_TEAMS_MCP_TOKEN",
+    });
+  });
+});
+
+describe("Codex Adapter experimental_use_rmcp_client", () => {
+  it("adds the top-level switch when writing an http server to a fresh file", async () => {
+    await codexAdapter.write(tmpDir, "my-mcp", httpConfig);
+
+    const raw = await readFile(join(tmpDir, ".codex", "config.toml"), "utf-8");
+
+    expect(raw).toMatch(/^experimental_use_rmcp_client = true$/m);
+    const reread = await codexAdapter.read(tmpDir);
+    expect(reread).toHaveProperty("my-mcp");
+  });
+
+  it("leaves an existing false value untouched", async () => {
+    const { writeFile, mkdir } = await import("node:fs/promises");
+    await mkdir(join(tmpDir, ".codex"), { recursive: true });
+    await writeFile(
+      join(tmpDir, ".codex", "config.toml"),
+      "experimental_use_rmcp_client = false\n",
+      "utf-8",
+    );
+
+    await codexAdapter.write(tmpDir, "my-mcp", httpConfig);
+
+    const raw = await readFile(join(tmpDir, ".codex", "config.toml"), "utf-8");
+    expect(raw).toMatch(/^experimental_use_rmcp_client = false$/m);
+    expect(raw).not.toMatch(/^experimental_use_rmcp_client = true$/m);
+  });
+
+  it("does not add the switch for stdio servers", async () => {
+    await codexAdapter.write(tmpDir, "native-env", nativeEnvConfig);
+
+    const raw = await readFile(join(tmpDir, ".codex", "config.toml"), "utf-8");
+    expect(raw).not.toContain("experimental_use_rmcp_client");
+  });
+});
+
+describe("Codex Adapter globalDir", () => {
+  it("declares the user home directory as global write target", async () => {
+    const { homedir } = await import("node:os");
+    expect(codexAdapter.globalDir?.()).toBe(homedir());
+  });
 });

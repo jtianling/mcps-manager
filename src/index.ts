@@ -56,6 +56,16 @@ program
     "-f, --force",
     "Overwrite existing central server entries without confirmation",
   )
+  .option(
+    "--global",
+    "Write agent config to the agent's global config location instead of the project (currently codex only)",
+  )
+  .option(
+    "--var <name=value>",
+    "Provide a manifest env var / variable value non-interactively (repeatable, manifest-driven flow only)",
+    (value: string, previous: string[]) => [...previous, value],
+    [] as string[],
+  )
   .action(
     (
       input: string,
@@ -64,6 +74,8 @@ program
         port?: string;
         y?: boolean;
         force?: boolean;
+        global?: boolean;
+        var?: string[];
       },
     ) =>
       addCommand(input, {
@@ -71,6 +83,8 @@ program
         port: options.port,
         yes: options.y,
         force: options.force,
+        global: options.global,
+        vars: options.var,
       }),
   );
 

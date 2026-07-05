@@ -24,7 +24,9 @@ function toAgentFormat(config: DefaultConfig): Record<string, unknown> {
   return {
     type: "remote",
     url: config.url,
-    headers: { ...config.headers },
+    ...(Object.keys(config.headers).length > 0
+      ? { headers: { ...config.headers } }
+      : {}),
   };
 }
 

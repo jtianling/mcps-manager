@@ -51,6 +51,7 @@ export function applyManifest(input: ApplyManifestInput): ApplyManifestResult {
 
   validateSelectedAgents(manifest, agentIds);
   const headerInsertions = buildEnvHeaderInsertions(manifest, envValues);
+  const bearerTokenEnvVar = findBearerTokenEnvVar(manifest);
   const warnings = computeCompatibilityWarnings(manifest);
 
   const perAgent: Partial<Record<AgentId, readonly ServerDefinition[]>> = {};
@@ -66,6 +67,7 @@ export function applyManifest(input: ApplyManifestInput): ApplyManifestResult {
         optionalDeclared,
         path,
         headerInsertions,
+        bearerTokenEnvVar,
       );
       return {
         name: srv.name,
@@ -164,6 +166,20 @@ function buildEnvHeaderInsertions(
   return out;
 }
 
+function findBearerTokenEnvVar(manifest: Manifest): string | undefined {
+  for (const ev of manifest.envVars ?? []) {
+    const aa = ev.appliedAs;
+    if (
+      aa?.kind === "header" &&
+      aa.name.toLowerCase() === "authorization" &&
+      aa.format.trim() === "Bearer ${VALUE}"
+    ) {
+      return ev.name;
+    }
+  }
+  return undefined;
+}
+
 function computeCompatibilityWarnings(manifest: Manifest): readonly string[] {
   const compat = manifest.compatibility?.npmPackage;
   if (!compat) return [];
@@ -197,6 +213,7 @@ function resolveServerConfig(
   optionalDeclared: ReadonlySet<string>,
   path: string,
   headerInsertions: readonly { readonly header: string; readonly value: string }[],
+  bearerTokenEnvVar: string | undefined,
 ): DefaultConfig {
   if (cfg.transport === "stdio") {
     const command = substitute(
@@ -234,7 +251,12 @@ function resolveServerConfig(
       headers[ins.header] = ins.value;
     }
   }
-  return { transport: "http", url, headers } satisfies HttpConfig;
+  return {
+    transport: "http",
+    url,
+    headers,
+    ...(bearerTokenEnvVar !== undefined ? { bearerTokenEnvVar } : {}),
+  } satisfies HttpConfig;
 }
 
 function substitute(

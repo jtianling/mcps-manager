@@ -42,6 +42,7 @@ function buildDeps(overrides: Partial<AddDeps> = {}): AddDeps {
     promptManifestAgents: async () => [],
     promptVariableValue: async () => "",
     promptEnvValue: async () => "",
+    readEnvVar: () => undefined,
     confirmOverwrite: async () => true,
     writeToAgent: vi.fn(async () => undefined),
     print: (l) => sink.print.push(l),
@@ -797,5 +798,310 @@ describe("runAdd resolver bundle flow", () => {
     for (const [name, config] of afterFirst) {
       expect(agentWrites[name]![1]).toEqual(config);
     }
+  });
+});
+
+describe("runAdd --global flag", () => {
+  const centralDefinition: ServerDefinition = {
+    name: "context7",
+    source: "test",
+    default: { transport: "stdio", command: "npx", args: [], env: {} },
+    overrides: {},
+  };
+
+  it("manifest flow with -a codex writes to the codex global dir", async () => {
+    const { homedir } = await import("node:os");
+    const writeToAgent = vi.fn(async () => undefined);
+    const deps = buildDeps({
+      fetchManifest: async () => xatsManifest,
+      writeToAgent,
+    });
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "codex", yes: true, global: true },
+      deps,
+    );
+    expect(writeToAgent).toHaveBeenCalledWith(
+      "codex",
+      homedir(),
+      "cross-agent-teams",
+      expect.objectContaining({ transport: "http" }),
+    );
+  });
+
+  it("central flow with -a opencode errors (no global support)", async () => {
+    const writeToAgent = vi.fn(async () => undefined);
+    const deps = buildDeps({
+      serverExists: () => true,
+      readServerDefinition: async () => centralDefinition,
+      writeToAgent,
+    });
+    await runAdd("context7", { agent: "opencode", global: true }, deps);
+    expect(writeToAgent).not.toHaveBeenCalled();
+    const d = getDiagnostics(deps);
+    expect(
+      d.__sink.error.some((l) =>
+        /--global is not supported for agent 'opencode'/.test(l),
+      ),
+    ).toBe(true);
+    expect(d.__exitCode()).toBe(1);
+  });
+
+  it("central flow with -a antigravity errors (already global)", async () => {
+    const writeToAgent = vi.fn(async () => undefined);
+    const deps = buildDeps({
+      serverExists: () => true,
+      readServerDefinition: async () => centralDefinition,
+      writeToAgent,
+    });
+    await runAdd("context7", { agent: "antigravity", global: true }, deps);
+    expect(writeToAgent).not.toHaveBeenCalled();
+    const d = getDiagnostics(deps);
+    expect(
+      d.__sink.error.some((l) =>
+        /agent 'antigravity' config is already global/.test(l),
+      ),
+    ).toBe(true);
+    expect(d.__exitCode()).toBe(1);
+  });
+
+  it("without --global keeps writing to the project dir", async () => {
+    const writeToAgent = vi.fn(async () => undefined);
+    const deps = buildDeps({
+      fetchManifest: async () => xatsManifest,
+      writeToAgent,
+    });
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "codex", yes: true },
+      deps,
+    );
+    expect(writeToAgent).toHaveBeenCalledWith(
+      "codex",
+      "/tmp/proj",
+      "cross-agent-teams",
+      expect.anything(),
+    );
+  });
+});
+
+describe("runAdd --var flag and non-interactive env values", () => {
+  it("rejects malformed --var entry", async () => {
+    const deps = buildDeps({ fetchManifest: async () => xatsManifest });
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "codex", yes: true, vars: ["NO_EQUALS_SIGN"] },
+      deps,
+    );
+    const d = getDiagnostics(deps);
+    expect(
+      d.__sink.error.some((l) =>
+        /invalid --var 'NO_EQUALS_SIGN', expected NAME=VALUE/.test(l),
+      ),
+    ).toBe(true);
+    expect(d.__exitCode()).toBe(1);
+  });
+
+  it("rejects --var name not declared in manifest, listing declared names", async () => {
+    const deps = buildDeps({ fetchManifest: async () => xatsManifest });
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "codex", yes: true, vars: ["TYPO_NAME=x"] },
+      deps,
+    );
+    const d = getDiagnostics(deps);
+    expect(
+      d.__sink.error.some(
+        (l) =>
+          /--var 'TYPO_NAME' is not declared/.test(l) &&
+          /CROSS_AGENT_TEAMS_TOKEN/.test(l) &&
+          /port/.test(l),
+      ),
+    ).toBe(true);
+    expect(d.__exitCode()).toBe(1);
+  });
+
+  it("rejects --var for central (non-manifest) add", async () => {
+    const deps = buildDeps({
+      serverExists: () => true,
+      readServerDefinition: async () => ({
+        name: "context7",
+        source: "test",
+        default: {
+          transport: "stdio" as const,
+          command: "npx",
+          args: [],
+          env: {},
+        },
+        overrides: {},
+      }),
+    });
+    await runAdd("context7", { agent: "codex", vars: ["FOO=bar"] }, deps);
+    const d = getDiagnostics(deps);
+    expect(
+      d.__sink.error.some((l) =>
+        /--var only applies to manifest-driven add/.test(l),
+      ),
+    ).toBe(true);
+    expect(d.__exitCode()).toBe(1);
+  });
+
+  it("-y uses --var value for optional env var without prompting", async () => {
+    let captured: DefaultConfig | undefined;
+    const promptEnvValue = vi.fn();
+    const deps = buildDeps({
+      fetchManifest: async () => xatsManifest,
+      promptEnvValue,
+      writeToAgent: async (_id, _dir, _name, cfg) => {
+        if (cfg.transport === "http") captured = cfg;
+      },
+    });
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      {
+        agent: "codex",
+        yes: true,
+        vars: ["CROSS_AGENT_TEAMS_TOKEN=abc123"],
+      },
+      deps,
+    );
+    expect(promptEnvValue).not.toHaveBeenCalled();
+    expect(captured).toBeDefined();
+    if (captured && captured.transport === "http") {
+      expect(captured.headers["Authorization"]).toBe("Bearer abc123");
+      expect(captured.bearerTokenEnvVar).toBe("CROSS_AGENT_TEAMS_TOKEN");
+    }
+    const d = getDiagnostics(deps);
+    const sourceLine = d.__sink.print.find((l) =>
+      /CROSS_AGENT_TEAMS_TOKEN: using value from --var/.test(l),
+    );
+    expect(sourceLine).toBeDefined();
+    expect(sourceLine).not.toContain("abc123");
+  });
+
+  it("-y falls back to process env for optional env var", async () => {
+    let captured: DefaultConfig | undefined;
+    const deps = buildDeps({
+      fetchManifest: async () => xatsManifest,
+      readEnvVar: (name) =>
+        name === "CROSS_AGENT_TEAMS_TOKEN" ? "env-token" : undefined,
+      writeToAgent: async (_id, _dir, _name, cfg) => {
+        if (cfg.transport === "http") captured = cfg;
+      },
+    });
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "codex", yes: true },
+      deps,
+    );
+    expect(captured).toBeDefined();
+    if (captured && captured.transport === "http") {
+      expect(captured.headers["Authorization"]).toBe("Bearer env-token");
+    }
+    const d = getDiagnostics(deps);
+    expect(
+      d.__sink.print.some((l) =>
+        /CROSS_AGENT_TEAMS_TOKEN: using value from environment/.test(l),
+      ),
+    ).toBe(true);
+  });
+
+  it("--var wins over process env", async () => {
+    let captured: DefaultConfig | undefined;
+    const deps = buildDeps({
+      fetchManifest: async () => xatsManifest,
+      readEnvVar: () => "env-token",
+      writeToAgent: async (_id, _dir, _name, cfg) => {
+        if (cfg.transport === "http") captured = cfg;
+      },
+    });
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      {
+        agent: "codex",
+        yes: true,
+        vars: ["CROSS_AGENT_TEAMS_TOKEN=flag-token"],
+      },
+      deps,
+    );
+    if (captured && captured.transport === "http") {
+      expect(captured.headers["Authorization"]).toBe("Bearer flag-token");
+    }
+  });
+
+  it("interactive mode skips env var prompt when process env provides it", async () => {
+    const promptEnvValue = vi.fn(async () => "typed");
+    const deps = buildDeps({
+      fetchManifest: async () => xatsManifest,
+      readEnvVar: () => "env-token",
+      promptManifestAgents: async () => ["codex" as AgentId],
+      promptEnvValue,
+    });
+    await runAdd("jtianling/cross-agent-teams-mcp", {}, deps);
+    expect(promptEnvValue).not.toHaveBeenCalled();
+  });
+
+  it("-y passes for required env var when process env provides it", async () => {
+    const m: Manifest = {
+      ...xatsManifest,
+      envVars: [{ name: "REQUIRED_TOKEN", required: true, secret: true }],
+    };
+    const writeToAgent = vi.fn(async () => undefined);
+    const deps = buildDeps({
+      fetchManifest: async () => m,
+      readEnvVar: (name) => (name === "REQUIRED_TOKEN" ? "tok" : undefined),
+      writeToAgent,
+    });
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "claude-code", yes: true },
+      deps,
+    );
+    const d = getDiagnostics(deps);
+    expect(d.__sink.error).toEqual([]);
+    expect(d.__exitCode()).toBe(0);
+    expect(writeToAgent).toHaveBeenCalled();
+  });
+
+  it("--var supplies a required variable under -y", async () => {
+    const m = {
+      ...xatsManifest,
+      variables: {
+        ...xatsManifest.variables,
+        token: { required: true },
+      },
+    } as unknown as Manifest;
+    const writeToAgent = vi.fn(async () => undefined);
+    const deps = buildDeps({
+      fetchManifest: async () => m,
+      writeToAgent,
+    });
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "claude-code", yes: true, vars: ["token=xyz"] },
+      deps,
+    );
+    const d = getDiagnostics(deps);
+    expect(d.__sink.error).toEqual([]);
+    expect(d.__exitCode()).toBe(0);
+    expect(writeToAgent).toHaveBeenCalled();
+  });
+
+  it("required variable error mentions --var remedy", async () => {
+    const m = {
+      ...xatsManifest,
+      variables: { token: { required: true } },
+    } as unknown as Manifest;
+    const deps = buildDeps({ fetchManifest: async () => m });
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "claude-code", yes: true },
+      deps,
+    );
+    const d = getDiagnostics(deps);
+    expect(
+      d.__sink.error.some((l) => /or --var token=/.test(l)),
+    ).toBe(true);
+    expect(d.__exitCode()).toBe(1);
   });
 });
