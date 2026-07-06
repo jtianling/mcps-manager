@@ -393,6 +393,14 @@ describe("OpenCode Adapter", () => {
     });
   });
 
+  it("declares ~/.config/opencode as global write target", async () => {
+    const { homedir } = await import("node:os");
+    const { join } = await import("node:path");
+    expect(opencodeAdapter.globalDir?.()).toBe(
+      join(homedir(), ".config", "opencode"),
+    );
+  });
+
   it("omits headers key when http headers are empty", async () => {
     await opencodeAdapter.write(tmpDir, "my-mcp", {
       transport: "http",

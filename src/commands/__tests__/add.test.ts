@@ -829,7 +829,27 @@ describe("runAdd --global flag", () => {
     );
   });
 
-  it("central flow with -a opencode errors (no global support)", async () => {
+  it("central flow with -a gemini-cli errors (no global support)", async () => {
+    const writeToAgent = vi.fn(async () => undefined);
+    const deps = buildDeps({
+      serverExists: () => true,
+      readServerDefinition: async () => centralDefinition,
+      writeToAgent,
+    });
+    await runAdd("context7", { agent: "gemini-cli", global: true }, deps);
+    expect(writeToAgent).not.toHaveBeenCalled();
+    const d = getDiagnostics(deps);
+    expect(
+      d.__sink.error.some((l) =>
+        /--global is not supported for agent 'gemini-cli'/.test(l),
+      ),
+    ).toBe(true);
+    expect(d.__exitCode()).toBe(1);
+  });
+
+  it("central flow with -a opencode --global writes to the opencode global dir", async () => {
+    const { homedir } = await import("node:os");
+    const { join } = await import("node:path");
     const writeToAgent = vi.fn(async () => undefined);
     const deps = buildDeps({
       serverExists: () => true,
@@ -837,14 +857,12 @@ describe("runAdd --global flag", () => {
       writeToAgent,
     });
     await runAdd("context7", { agent: "opencode", global: true }, deps);
-    expect(writeToAgent).not.toHaveBeenCalled();
-    const d = getDiagnostics(deps);
-    expect(
-      d.__sink.error.some((l) =>
-        /--global is not supported for agent 'opencode'/.test(l),
-      ),
-    ).toBe(true);
-    expect(d.__exitCode()).toBe(1);
+    expect(writeToAgent).toHaveBeenCalledWith(
+      "opencode",
+      join(homedir(), ".config", "opencode"),
+      "context7",
+      expect.anything(),
+    );
   });
 
   it("central flow with -a antigravity errors (already global)", async () => {

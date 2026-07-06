@@ -58,7 +58,7 @@ program
   )
   .option(
     "--global",
-    "Write agent config to the agent's global config location instead of the project (currently codex only)",
+    "Write agent config to the agent's global config location instead of the project (currently codex and opencode)",
   )
   .option(
     "--var <name=value>",

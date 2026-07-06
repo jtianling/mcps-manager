@@ -52,7 +52,8 @@ The resolver picks the matching central entry or bundle when one exists, and fal
 -f, --force          Overwrite existing central entries without confirmation
 --port <number>      Override manifest variables.port (manifest-driven flow)
 --global             Write agent config to the agent's global config location
-                     instead of the project (currently codex only: ~/.codex/config.toml)
+                     instead of the project (codex: ~/.codex/config.toml,
+                     opencode: ~/.config/opencode/opencode.json)
 --var <name=value>   Provide manifest env var / variable values non-interactively
                      (repeatable, manifest-driven flow)
 ```

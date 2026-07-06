@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { homedir } from "node:os";
 import type { AgentAdapter, DefaultConfig } from "../types.js";
 import { readJsonFile, writeJsonFile } from "./json-file.js";
 import { buildEnvArgs, parseEnvArgs, resolveEnvInArgs } from "./env-args.js";
@@ -73,6 +74,7 @@ export const opencodeAdapter: AgentAdapter = {
   name: "OpenCode",
   configPath: (projectDir) => join(projectDir, "opencode.json"),
   isGlobal: false,
+  globalDir: () => join(homedir(), ".config", "opencode"),
 
   toAgentFormat,
   fromAgentFormat,
