@@ -44,6 +44,8 @@ function buildDeps(overrides: Partial<AddDeps> = {}): AddDeps {
     promptEnvValue: async () => "",
     readEnvVar: () => undefined,
     confirmOverwrite: async () => true,
+    confirmManifestRefresh: async () => false,
+    readBundleMembers: async () => undefined,
     writeToAgent: vi.fn(async () => undefined),
     print: (l) => sink.print.push(l),
     warn: (l) => sink.warn.push(l),
@@ -662,7 +664,7 @@ describe("runAdd github fallback to README", () => {
 });
 
 describe("runAdd resolver bundle flow", () => {
-  it("adds every bundle member without network or central writes", async () => {
+  it("adds every bundle member without central writes when refresh declined", async () => {
     const definitions: Record<string, ServerDefinition> = {
       "cross-agent-teams": {
         name: "cross-agent-teams",
@@ -682,6 +684,7 @@ describe("runAdd resolver bundle flow", () => {
       },
     };
     const fetchManifest = vi.fn(async () => xatsManifest);
+    const confirmManifestRefresh = vi.fn(async () => false);
     const writeServerDefinition = vi.fn(async () => undefined);
     const writeToAgent = vi.fn(async () => undefined);
     const deps = buildDeps({
@@ -693,13 +696,15 @@ describe("runAdd resolver bundle flow", () => {
       }),
       readServerDefinition: async (name) => definitions[name],
       fetchManifest,
+      confirmManifestRefresh,
       writeServerDefinition,
       writeToAgent,
     });
 
     await runAdd("repo", { agent: "claude-code" }, deps);
 
-    expect(fetchManifest).not.toHaveBeenCalled();
+    expect(fetchManifest).toHaveBeenCalledTimes(1);
+    expect(confirmManifestRefresh).toHaveBeenCalledTimes(1);
     expect(writeServerDefinition).not.toHaveBeenCalled();
     expect(writeToAgent).toHaveBeenCalledTimes(2);
     expect(writeToAgent).toHaveBeenCalledWith(
@@ -792,12 +797,377 @@ describe("runAdd resolver bundle flow", () => {
     );
     await runAdd("cross-agent-teams-mcp", { agent: "claude-code" }, deps);
 
-    expect(fetchManifest).toHaveBeenCalledTimes(1);
+    // Second call fetches for refresh detection, finds no diff, reuses store.
+    expect(fetchManifest).toHaveBeenCalledTimes(2);
     expect(writeServerDefinition).toHaveBeenCalledTimes(2);
     expect(writeToAgent).toHaveBeenCalledTimes(4);
     for (const [name, config] of afterFirst) {
       expect(agentWrites[name]![1]).toEqual(config);
     }
+  });
+});
+
+const XATS_BUNDLE = {
+  kind: "bundle",
+  bundleId: "git:https://github.com/jtianling/cross-agent-teams-mcp",
+  url: "https://github.com/jtianling/cross-agent-teams-mcp",
+  members: ["cross-agent-teams", "cross-agent-teams-channel"],
+} as const;
+
+// Store definitions from an older install: no bearerTokenEnvVar and the
+// channel server written for every agent.
+const OLD_XATS_DEFS: Record<string, ServerDefinition> = {
+  "cross-agent-teams": {
+    name: "cross-agent-teams",
+    source: "jtianling/cross-agent-teams-mcp",
+    repoName: "cross-agent-teams-mcp",
+    bundleId: XATS_BUNDLE.bundleId,
+    default: {
+      transport: "http",
+      url: "http://127.0.0.1:9100/mcp",
+      headers: {},
+    },
+    overrides: {},
+  },
+  "cross-agent-teams-channel": {
+    name: "cross-agent-teams-channel",
+    source: "jtianling/cross-agent-teams-mcp",
+    repoName: "cross-agent-teams-mcp",
+    bundleId: XATS_BUNDLE.bundleId,
+    default: {
+      transport: "stdio",
+      command: "npx",
+      args: ["channel"],
+      env: {},
+    },
+    overrides: {},
+  },
+};
+
+function buildBundleDeps(overrides: Partial<AddDeps> = {}): AddDeps {
+  return buildDeps({
+    resolveInput: async () => XATS_BUNDLE,
+    readServerDefinition: async (name) => OLD_XATS_DEFS[name],
+    readBundleMembers: async () => XATS_BUNDLE.members,
+    fetchManifest: async () => xatsManifest,
+    ...overrides,
+  });
+}
+
+describe("runAdd bundle manifest refresh", () => {
+  it("diff + agree: per-agent filter applies and store refreshes", async () => {
+    const confirmManifestRefresh = vi.fn(async () => true);
+    const stored: ServerDefinition[] = [];
+    const writeServerDefinition = vi.fn(async (def: ServerDefinition) => {
+      stored.push(def);
+    });
+    const agentWrites: { name: string; config: DefaultConfig }[] = [];
+    const writeToAgent = vi.fn(
+      async (_id: AgentId, _dir: string, name: string, config: DefaultConfig) => {
+        agentWrites.push({ name, config });
+      },
+    );
+    const deps = buildBundleDeps({
+      confirmManifestRefresh,
+      writeServerDefinition,
+      writeToAgent,
+    });
+
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "codex" },
+      deps,
+    );
+
+    expect(confirmManifestRefresh).toHaveBeenCalledWith(
+      "jtianling/cross-agent-teams-mcp",
+    );
+    expect(agentWrites.map((w) => w.name)).toEqual(["cross-agent-teams"]);
+    const cfg = agentWrites[0]!.config;
+    expect(cfg.transport).toBe("http");
+    if (cfg.transport === "http") {
+      expect(cfg.bearerTokenEnvVar).toBe("CROSS_AGENT_TEAMS_TOKEN");
+    }
+    expect(stored).toHaveLength(1);
+    const storedCfg = stored[0]!.default;
+    if (storedCfg.transport === "http") {
+      expect(storedCfg.bearerTokenEnvVar).toBe("CROSS_AGENT_TEAMS_TOKEN");
+    } else {
+      throw new Error("expected http config in store");
+    }
+  });
+
+  it("diff + decline: all members written from old defs, zero store writes", async () => {
+    const confirmManifestRefresh = vi.fn(async () => false);
+    const writeServerDefinition = vi.fn(async () => undefined);
+    const upsertBundle = vi.fn(async () => undefined);
+    const writeToAgent = vi.fn(async () => undefined);
+    const deps = buildBundleDeps({
+      confirmManifestRefresh,
+      writeServerDefinition,
+      upsertBundle,
+      writeToAgent,
+    });
+
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "codex" },
+      deps,
+    );
+
+    expect(confirmManifestRefresh).toHaveBeenCalledTimes(1);
+    expect(writeServerDefinition).not.toHaveBeenCalled();
+    expect(upsertBundle).not.toHaveBeenCalled();
+    expect(writeToAgent).toHaveBeenCalledTimes(2);
+    expect(writeToAgent).toHaveBeenCalledWith(
+      "codex",
+      "/tmp/proj",
+      "cross-agent-teams",
+      OLD_XATS_DEFS["cross-agent-teams"]!.default,
+    );
+    expect(writeToAgent).toHaveBeenCalledWith(
+      "codex",
+      "/tmp/proj",
+      "cross-agent-teams-channel",
+      OLD_XATS_DEFS["cross-agent-teams-channel"]!.default,
+    );
+  });
+
+  it("no diff: no prompt, behaves like the legacy bundle path", async () => {
+    const upToDate: Record<string, ServerDefinition> = {
+      "cross-agent-teams": {
+        ...OLD_XATS_DEFS["cross-agent-teams"]!,
+        default: {
+          transport: "http",
+          url: "http://127.0.0.1:9100/mcp",
+          headers: {},
+          bearerTokenEnvVar: "CROSS_AGENT_TEAMS_TOKEN",
+        },
+      },
+      "cross-agent-teams-channel": {
+        ...OLD_XATS_DEFS["cross-agent-teams-channel"]!,
+        default: {
+          transport: "stdio",
+          command: "npx",
+          args: [
+            "-y",
+            "-p",
+            "cross-agent-teams-mcp@^0.5",
+            "cross-agent-teams-channel",
+            "--daemon-url",
+            "http://127.0.0.1:9100/mcp",
+          ],
+          env: {},
+        },
+      },
+    };
+    const confirmManifestRefresh = vi.fn(async () => true);
+    const writeServerDefinition = vi.fn(async () => undefined);
+    const writeToAgent = vi.fn(async () => undefined);
+    const deps = buildBundleDeps({
+      readServerDefinition: async (name) => upToDate[name],
+      confirmManifestRefresh,
+      writeServerDefinition,
+      writeToAgent,
+    });
+
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "claude-code" },
+      deps,
+    );
+
+    expect(confirmManifestRefresh).not.toHaveBeenCalled();
+    expect(writeServerDefinition).not.toHaveBeenCalled();
+    expect(writeToAgent).toHaveBeenCalledTimes(2);
+  });
+
+  it("fetch throws: silent fallback to old defs, no error output", async () => {
+    const confirmManifestRefresh = vi.fn(async () => true);
+    const writeToAgent = vi.fn(async () => undefined);
+    const deps = buildBundleDeps({
+      fetchManifest: async () => {
+        throw new Error("network down");
+      },
+      confirmManifestRefresh,
+      writeToAgent,
+    });
+
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "codex" },
+      deps,
+    );
+
+    const d = getDiagnostics(deps);
+    expect(confirmManifestRefresh).not.toHaveBeenCalled();
+    expect(writeToAgent).toHaveBeenCalledTimes(2);
+    expect(d.__sink.error).toEqual([]);
+    expect(d.__sink.warn).toEqual([]);
+    expect(d.__exitCode()).toBe(0);
+  });
+
+  it("fetch 404: silent fallback to old defs", async () => {
+    const confirmManifestRefresh = vi.fn(async () => true);
+    const writeToAgent = vi.fn(async () => undefined);
+    const deps = buildBundleDeps({
+      fetchManifest: async () => undefined,
+      confirmManifestRefresh,
+      writeToAgent,
+    });
+
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "codex" },
+      deps,
+    );
+
+    const d = getDiagnostics(deps);
+    expect(confirmManifestRefresh).not.toHaveBeenCalled();
+    expect(writeToAgent).toHaveBeenCalledTimes(2);
+    expect(d.__sink.error).toEqual([]);
+  });
+
+  it("-y with diff: overwrites without asking", async () => {
+    const confirmManifestRefresh = vi.fn(async () => false);
+    const writeServerDefinition = vi.fn(async () => undefined);
+    const deps = buildBundleDeps({
+      confirmManifestRefresh,
+      writeServerDefinition,
+    });
+
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "codex", yes: true },
+      deps,
+    );
+
+    expect(confirmManifestRefresh).not.toHaveBeenCalled();
+    expect(writeServerDefinition).toHaveBeenCalledTimes(1);
+  });
+
+  it("bare repoName input triggers refresh detection too", async () => {
+    const confirmManifestRefresh = vi.fn(async () => false);
+    const deps = buildBundleDeps({ confirmManifestRefresh });
+
+    await runAdd("cross-agent-teams-mcp", { agent: "codex" }, deps);
+
+    expect(confirmManifestRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("partial-agent overwrite keeps existing bundle members (union)", async () => {
+    const upsertBundle = vi.fn(async () => undefined);
+    const deps = buildBundleDeps({
+      confirmManifestRefresh: async () => true,
+      upsertBundle,
+    });
+
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "codex" },
+      deps,
+    );
+
+    expect(upsertBundle).toHaveBeenCalledWith(
+      XATS_BUNDLE.bundleId,
+      expect.objectContaining({
+        members: expect.arrayContaining([
+          "cross-agent-teams",
+          "cross-agent-teams-channel",
+        ]),
+      }),
+    );
+  });
+
+  it("--port applies when the refresh takes the manifest path", async () => {
+    const agentWrites: DefaultConfig[] = [];
+    const deps = buildBundleDeps({
+      writeToAgent: async (_id, _dir, _name, cfg) => {
+        agentWrites.push(cfg);
+      },
+    });
+
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "codex", yes: true, port: "9300" },
+      deps,
+    );
+
+    expect(agentWrites).toHaveLength(1);
+    const cfg = agentWrites[0]!;
+    if (cfg.transport === "http") {
+      expect(cfg.url).toBe("http://127.0.0.1:9300/mcp");
+    } else {
+      throw new Error("expected http config");
+    }
+  });
+
+  it("--var errors when the bundle falls back to the old-definition path", async () => {
+    const writeToAgent = vi.fn(async () => undefined);
+    const deps = buildBundleDeps({
+      fetchManifest: async () => {
+        throw new Error("network down");
+      },
+      writeToAgent,
+    });
+
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "codex", vars: ["FOO=bar"] },
+      deps,
+    );
+
+    const d = getDiagnostics(deps);
+    expect(
+      d.__sink.error.some((l) =>
+        /--var only applies to manifest-driven add/.test(l),
+      ),
+    ).toBe(true);
+    expect(d.__exitCode()).toBe(1);
+    expect(writeToAgent).not.toHaveBeenCalled();
+  });
+
+  it("--port errors when refresh is declined and old path is taken", async () => {
+    const writeToAgent = vi.fn(async () => undefined);
+    const deps = buildBundleDeps({
+      confirmManifestRefresh: async () => false,
+      writeToAgent,
+    });
+
+    await runAdd(
+      "jtianling/cross-agent-teams-mcp",
+      { agent: "codex", port: "9300" },
+      deps,
+    );
+
+    const d = getDiagnostics(deps);
+    expect(
+      d.__sink.error.some((l) => /--port only applies/.test(l)),
+    ).toBe(true);
+    expect(d.__exitCode()).toBe(1);
+    expect(writeToAgent).not.toHaveBeenCalled();
+  });
+
+  it("agent selection happens exactly once across refresh paths", async () => {
+    const promptAgents = vi.fn(async () => ["claude-code" as AgentId]);
+    const promptManifestAgents = vi.fn(async () => []);
+    const writeServerDefinition = vi.fn(async () => undefined);
+    const writeToAgent = vi.fn(async () => undefined);
+    const deps = buildBundleDeps({
+      promptAgents,
+      promptManifestAgents,
+      confirmManifestRefresh: async () => true,
+      writeServerDefinition,
+      writeToAgent,
+      promptEnvValue: async () => "",
+    });
+
+    await runAdd("jtianling/cross-agent-teams-mcp", {}, deps);
+
+    expect(promptAgents).toHaveBeenCalledTimes(1);
+    expect(promptManifestAgents).not.toHaveBeenCalled();
+    expect(writeServerDefinition).toHaveBeenCalledTimes(2);
+    expect(writeToAgent).toHaveBeenCalledTimes(2);
   });
 });
 

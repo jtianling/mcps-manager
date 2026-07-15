@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from "node:util";
 import { checkbox, password, input } from "@inquirer/prompts";
 import { allAdapters, detectAgents, getAdapter } from "../adapters/index.js";
 import {
@@ -5,7 +6,7 @@ import {
   serverExists,
   writeServerDefinition,
 } from "../utils/server-store.js";
-import { upsertBundle } from "../utils/bundle-store.js";
+import { readBundle, upsertBundle } from "../utils/bundle-store.js";
 import { resolveConfig } from "../utils/resolve-config.js";
 import { CHECKBOX_DEFAULTS, isUserCancellation } from "../utils/prompt.js";
 import type {
@@ -120,6 +121,10 @@ export interface AddDeps {
   readonly promptEnvValue: (ev: ManifestEnvVar) => Promise<string>;
   readonly readEnvVar: (name: string) => string | undefined;
   readonly confirmOverwrite: (name: string) => Promise<boolean>;
+  readonly confirmManifestRefresh: (repo: string) => Promise<boolean>;
+  readonly readBundleMembers: (
+    id: string,
+  ) => Promise<readonly string[] | undefined>;
   readonly writeToAgent: (
     agentId: AgentId,
     projectDir: string,
@@ -173,8 +178,21 @@ export async function runAdd(
   }
 
   if (resolved.kind === "bundle") {
+    const selectedAgentIds = await selectAgents(
+      `Select agents to add bundle "${resolved.url}" to:`,
+      options,
+      deps,
+    );
+    if (!selectedAgentIds) return;
+    const refreshed = await maybeRefreshFromManifest(
+      resolved,
+      selectedAgentIds,
+      options,
+      deps,
+    );
+    if (refreshed) return;
     if (!checkManifestOnlyFlags(options, deps)) return;
-    await runAddFromBundle(resolved, options, deps);
+    await runAddFromBundle(resolved, selectedAgentIds, options, deps);
     return;
   }
 
@@ -278,6 +296,40 @@ function parseVarFlags(
   return { values };
 }
 
+// Shared agent selection (flag / -y / interactive checkbox). Returns
+// undefined when selection cannot proceed (message already emitted).
+async function selectAgents(
+  promptMessage: string,
+  options: AddOptions,
+  deps: AddDeps,
+): Promise<readonly AgentId[] | undefined> {
+  const agentFlag = options.agent as AgentId | undefined;
+  const detectedIds = new Set(deps.detectAgentIds(deps.projectDir));
+  let selectedAgentIds: readonly AgentId[];
+  if (agentFlag) {
+    selectedAgentIds = [agentFlag];
+  } else if (options.yes) {
+    selectedAgentIds = [...detectedIds];
+    if (selectedAgentIds.length === 0) {
+      deps.error(
+        "Error: -y requires either --agent or at least one detected agent in the project.",
+      );
+      deps.setExitCode(1);
+      return undefined;
+    }
+  } else {
+    selectedAgentIds = await deps.promptAgents(promptMessage, detectedIds);
+  }
+  if (selectedAgentIds.length === 0) {
+    deps.print("No agents selected.");
+    return undefined;
+  }
+  if (options.global && !ensureGlobalSupported(selectedAgentIds, deps)) {
+    return undefined;
+  }
+  return selectedAgentIds;
+}
+
 async function runAddFromCentral(
   serverName: string,
   options: AddOptions,
@@ -296,31 +348,12 @@ async function runAddFromCentral(
     deps.setExitCode(1);
     return;
   }
-  const agentFlag = options.agent as AgentId | undefined;
-  const detectedIds = new Set(deps.detectAgentIds(deps.projectDir));
-  let selectedAgentIds: readonly AgentId[];
-  if (agentFlag) {
-    selectedAgentIds = [agentFlag];
-  } else if (options.yes) {
-    selectedAgentIds = [...detectedIds];
-    if (selectedAgentIds.length === 0) {
-      deps.error(
-        "Error: -y requires either --agent or at least one detected agent in the project.",
-      );
-      deps.setExitCode(1);
-      return;
-    }
-  } else {
-    selectedAgentIds = await deps.promptAgents(
-      `Select agents to add "${serverName}" to:`,
-      detectedIds,
-    );
-  }
-  if (selectedAgentIds.length === 0) {
-    deps.print("No agents selected.");
-    return;
-  }
-  if (options.global && !ensureGlobalSupported(selectedAgentIds, deps)) return;
+  const selectedAgentIds = await selectAgents(
+    `Select agents to add "${serverName}" to:`,
+    options,
+    deps,
+  );
+  if (!selectedAgentIds) return;
 
   for (const id of selectedAgentIds) {
     const adapter = getAdapter(id);
@@ -343,35 +376,10 @@ async function runAddFromCentral(
 
 async function runAddFromBundle(
   bundle: Extract<ResolveResult, { readonly kind: "bundle" }>,
+  selectedAgentIds: readonly AgentId[],
   options: AddOptions,
   deps: AddDeps,
 ): Promise<void> {
-  const agentFlag = options.agent as AgentId | undefined;
-  const detectedIds = new Set(deps.detectAgentIds(deps.projectDir));
-  let selectedAgentIds: readonly AgentId[];
-  if (agentFlag) {
-    selectedAgentIds = [agentFlag];
-  } else if (options.yes) {
-    selectedAgentIds = [...detectedIds];
-    if (selectedAgentIds.length === 0) {
-      deps.error(
-        "Error: -y requires either --agent or at least one detected agent in the project.",
-      );
-      deps.setExitCode(1);
-      return;
-    }
-  } else {
-    selectedAgentIds = await deps.promptAgents(
-      `Select agents to add bundle "${bundle.url}" to:`,
-      detectedIds,
-    );
-  }
-  if (selectedAgentIds.length === 0) {
-    deps.print("No agents selected.");
-    return;
-  }
-  if (options.global && !ensureGlobalSupported(selectedAgentIds, deps)) return;
-
   for (const serverName of bundle.members) {
     const definition = await deps.readServerDefinition(serverName);
     if (!definition) {
@@ -395,6 +403,114 @@ async function runAddFromBundle(
         );
       }
     }
+  }
+}
+
+// Returns true when the manifest refresh path handled the add; false means
+// the caller should fall through to the legacy bundle path.
+async function maybeRefreshFromManifest(
+  bundle: Extract<ResolveResult, { readonly kind: "bundle" }>,
+  selectedAgentIds: readonly AgentId[],
+  options: AddOptions,
+  deps: AddDeps,
+): Promise<boolean> {
+  const ref = parseGitHubSource(bundle.url);
+  if (!ref) return false;
+  let manifest: Manifest | undefined;
+  try {
+    manifest = await deps.fetchManifest(ref);
+  } catch {
+    // Offline / invalid manifest is a normal case: fall back silently.
+    return false;
+  }
+  if (!manifest) return false;
+  const differs = await manifestDiffersFromStore(
+    bundle,
+    manifest,
+    selectedAgentIds,
+    options,
+    deps,
+  );
+  if (!differs) return false;
+  const agreed =
+    options.yes === true
+      ? true
+      : await deps.confirmManifestRefresh(`${ref.owner}/${ref.repo}`);
+  if (!agreed) return false;
+  await runAddFromManifest(bundle.url, manifest, options, deps, selectedAgentIds);
+  return true;
+}
+
+function buildPreviewValues(
+  manifest: Manifest,
+  options: AddOptions,
+  deps: AddDeps,
+): {
+  readonly variableValues: Readonly<Record<string, string>>;
+  readonly envValues: Readonly<Record<string, string>>;
+} {
+  const parsed = parseVarFlags(options.vars ?? []);
+  const varFlagValues = "error" in parsed ? {} : parsed.values;
+  const variableValues: Record<string, string> = {
+    ...collectVariableDefaults(manifest),
+  };
+  for (const name of Object.keys(manifest.variables ?? {})) {
+    if (varFlagValues[name] !== undefined) {
+      variableValues[name] = varFlagValues[name];
+    }
+  }
+  if (options.port !== undefined) variableValues["port"] = options.port;
+  const envValues: Record<string, string> = {};
+  for (const ev of manifest.envVars ?? []) {
+    const fromFlag = varFlagValues[ev.name];
+    const fromEnv = deps.readEnvVar(ev.name);
+    const value =
+      fromFlag !== undefined && fromFlag !== ""
+        ? fromFlag
+        : fromEnv !== undefined && fromEnv !== ""
+          ? fromEnv
+          : undefined;
+    if (value !== undefined) envValues[ev.name] = value;
+  }
+  return { variableValues, envValues };
+}
+
+// Non-interactive preview: any thrown error (e.g. unresolved required
+// variable) counts as a difference so the user decides via the prompt.
+async function manifestDiffersFromStore(
+  bundle: Extract<ResolveResult, { readonly kind: "bundle" }>,
+  manifest: Manifest,
+  selectedAgentIds: readonly AgentId[],
+  options: AddOptions,
+  deps: AddDeps,
+): Promise<boolean> {
+  try {
+    const { variableValues, envValues } = buildPreviewValues(
+      manifest,
+      options,
+      deps,
+    );
+    const result = applyManifest({
+      manifest,
+      source: bundle.url,
+      variableValues,
+      envValues,
+      agentIds: selectedAgentIds,
+    });
+    const oldMembers = new Set(bundle.members);
+    for (const id of selectedAgentIds) {
+      const defs = result.perAgent[id] ?? [];
+      if (defs.length !== oldMembers.size) return true;
+      if (defs.some((def) => !oldMembers.has(def.name))) return true;
+      for (const def of defs) {
+        const stored = await deps.readServerDefinition(def.name);
+        if (!stored) return true;
+        if (!isDeepStrictEqual(def.default, stored.default)) return true;
+      }
+    }
+    return false;
+  } catch {
+    return true;
   }
 }
 
@@ -440,6 +556,7 @@ async function runAddFromManifest(
   manifest: Manifest,
   options: AddOptions,
   deps: AddDeps,
+  preselectedAgents?: readonly AgentId[],
 ): Promise<void> {
   const declaredAgentIds = Object.keys(manifest.agents) as AgentId[];
 
@@ -474,7 +591,19 @@ async function runAddFromManifest(
 
   const detectedIds = new Set(deps.detectAgentIds(deps.projectDir));
   let selectedAgentIds: readonly AgentId[];
-  if (options.agent !== undefined) {
+  if (preselectedAgents !== undefined) {
+    const undeclared = preselectedAgents.find(
+      (id) => !declaredAgentIds.includes(id),
+    );
+    if (undeclared !== undefined) {
+      deps.error(
+        `Error: manifest does not declare configuration for agent '${undeclared}'; available: ${declaredAgentIds.join(", ")}`,
+      );
+      deps.setExitCode(1);
+      return;
+    }
+    selectedAgentIds = preselectedAgents;
+  } else if (options.agent !== undefined) {
     const id = options.agent as AgentId;
     if (!declaredAgentIds.includes(id)) {
       deps.error(
@@ -615,9 +744,14 @@ async function runAddFromManifest(
 
   const sourceMetadata = gitBundleMetadata(source);
   if (sourceMetadata && bundleMembers.size > 0) {
+    // Union with existing members so a partial-agent refresh does not
+    // evict servers that belong to other agents.
+    const existingMembers =
+      (await deps.readBundleMembers(sourceMetadata.bundleId)) ?? [];
+    const members = [...new Set([...existingMembers, ...bundleMembers])];
     await deps.upsertBundle(sourceMetadata.bundleId, {
       url: sourceMetadata.url,
-      members: [...bundleMembers],
+      members,
       selectionMode: "all",
     });
   }
@@ -683,6 +817,13 @@ function productionAddDeps(): AddDeps {
         message: `Server "${name}" already exists in central repository. Overwrite?`,
       });
     },
+    confirmManifestRefresh: async (repo) => {
+      const { confirm } = await import("@inquirer/prompts");
+      return confirm({
+        message: `Manifest for ${repo} has changed since install. Reinstall from latest manifest (overwrites central definitions)?`,
+      });
+    },
+    readBundleMembers: async (id) => (await readBundle(id))?.members,
     writeToAgent: async (id, projectDir, serverName, config) => {
       const adapter = getAdapter(id);
       await adapter.write(projectDir, serverName, config);
