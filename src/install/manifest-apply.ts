@@ -234,7 +234,13 @@ function resolveServerConfig(
         `${path}.config.env.${k}`,
       );
     }
-    return { transport: "stdio", command, args, env } satisfies StdioConfig;
+    return {
+      transport: "stdio",
+      command,
+      args,
+      env,
+      ...(cfg.enabled !== undefined ? { enabled: cfg.enabled } : {}),
+    } satisfies StdioConfig;
   }
   const url = substitute(cfg.url, subs, optionalDeclared, `${path}.config.url`);
   const headers: Record<string, string> = {};
@@ -256,6 +262,7 @@ function resolveServerConfig(
     url,
     headers,
     ...(bearerTokenEnvVar !== undefined ? { bearerTokenEnvVar } : {}),
+    ...(cfg.enabled !== undefined ? { enabled: cfg.enabled } : {}),
   } satisfies HttpConfig;
 }
 

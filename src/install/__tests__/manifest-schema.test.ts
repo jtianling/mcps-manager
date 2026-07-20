@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { validateManifest } from "../manifest-schema.js";
+import { allAdapters } from "../../adapters/index.js";
 
 function base() {
   return {
@@ -199,6 +203,32 @@ describe("validateManifest envVar appliedAs.format", () => {
     }
   });
 
+  it("accepts a boolean config.enabled", () => {
+    const m = base();
+    m.agents["claude-code"].servers[0]!.config = {
+      transport: "http",
+      url: "http://127.0.0.1:9100/mcp",
+      enabled: false,
+    } as never;
+    expect(validateManifest(m).ok).toBe(true);
+  });
+
+  it("rejects a non-boolean config.enabled", () => {
+    const m = base();
+    m.agents["claude-code"].servers[0]!.config = {
+      transport: "http",
+      url: "http://127.0.0.1:9100/mcp",
+      enabled: "false",
+    } as never;
+    const r = validateManifest(m);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(
+        r.errors.some((e) => /config\.enabled must be a boolean/.test(e)),
+      ).toBe(true);
+    }
+  });
+
   it("accepts appliedAs.format with ${VALUE}", () => {
     const m = {
       ...base(),
@@ -215,5 +245,46 @@ describe("validateManifest envVar appliedAs.format", () => {
     };
     const r = validateManifest(m);
     expect(r.ok).toBe(true);
+  });
+});
+
+describe("agent id lists stay in sync with the adapter registry", () => {
+  function manifestFor(agentId: string) {
+    return {
+      schemaVersion: "1.0.0",
+      name: "demo",
+      agents: {
+        [agentId]: {
+          servers: [
+            {
+              name: "demo",
+              config: { transport: "http", url: "http://127.0.0.1:9100/mcp" },
+            },
+          ],
+        },
+      },
+    };
+  }
+
+  it("validateManifest accepts every registered adapter id", () => {
+    for (const adapter of allAdapters) {
+      const r = validateManifest(manifestFor(adapter.id));
+      expect(r.ok, `${adapter.id} rejected by validateManifest`).toBe(true);
+    }
+  });
+
+  it("the published JSON schema lists exactly the registered adapter ids", () => {
+    const schemaPath = join(
+      dirname(fileURLToPath(import.meta.url)),
+      "../../../schemas/mcpsmgr.schema.json",
+    );
+    const schema = JSON.parse(readFileSync(schemaPath, "utf-8"));
+    const patterns = Object.keys(
+      schema.properties.agents.patternProperties as Record<string, unknown>,
+    );
+    expect(patterns).toHaveLength(1);
+    const ids = patterns[0]!.replace(/^\^\(|\)\$$/g, "").split("|");
+
+    expect([...ids].sort()).toEqual([...allAdapters.map((a) => a.id)].sort());
   });
 });

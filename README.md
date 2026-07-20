@@ -53,7 +53,8 @@ The resolver picks the matching central entry or bundle when one exists, and fal
 --port <number>      Override manifest variables.port (manifest-driven flow)
 --global             Write agent config to the agent's global config location
                      instead of the project (codex: ~/.codex/config.toml,
-                     opencode: ~/.config/opencode/opencode.json)
+                     opencode: ~/.config/opencode/opencode.json,
+                     kimi-code: ~/.kimi-code/mcp.json)
 --var <name=value>   Provide manifest env var / variable values non-interactively
                      (repeatable, manifest-driven flow)
 ```
@@ -63,6 +64,10 @@ The resolver picks the matching central entry or bundle when one exists, and fal
 Manifest env var values resolve in priority order `--var` > process environment > interactive prompt, so an exported token (or an explicit `--var NAME=VALUE`) makes `add` fully non-interactive even without `-y`.
 
 Codex-specific behavior: HTTP servers get a top-level `experimental_use_rmcp_client = true` compatibility switch (older Codex requires it to load streamable-http MCP servers; newer versions default to rmcp and tolerate the key), and a manifest env var applied as an `Authorization: Bearer` header is written as `bearer_token_env_var = "<NAME>"` instead of a plaintext header — the token stays in the environment, never in the config file. Use `--global` when Codex runs with `--remote`/app-server, which loads MCP servers from `~/.codex/config.toml` (CODEX_HOME) rather than the project-level file.
+
+Kimi Code-specific behavior: entries are written in Kimi's native shape — an explicit `transport` discriminator, a native `env` table for stdio, and `bearerTokenEnvVar` instead of a plaintext `Authorization` header for HTTP. Kimi loads three MCP files (`~/.kimi-code/mcp.json`, the project-root `.mcp.json` it shares with Claude Code, and the project-local `.kimi-code/mcp.json`) and merges them **per server key**, with later files winning. Two consequences: `remove` on the project-local file does not uninstall a server that the shared root `.mcp.json` also declares, and hiding such a server needs `enabled: false` rather than omission (see below).
+
+A manifest server config, or a per-agent override, may carry `enabled: false` to write an entry that the agent loads but keeps switched off. This is what masks a server inherited from an earlier config layer — the case it exists for is a stdio side-channel that only Claude Code understands and that would otherwise fail on startup under Kimi. Agents with no equivalent concept ignore the field and never write it.
 
 ## Installing servers into the central repository (`install`)
 
@@ -109,13 +114,14 @@ mcpsmgr update [name]         # re-analyze sources and patch central definitions
 | Cursor | `.cursor/mcp.json` | project | JSON |
 | Gemini CLI | `.gemini/settings.json` | project | JSON |
 | OpenCode | `opencode.json` | project | JSON |
+| Kimi Code | `.kimi-code/mcp.json` | project | JSON |
 | Antigravity | `~/.gemini/antigravity/mcp_config.json` | global | JSON |
 | OpenClaw | `~/.openclaw/openclaw.json` | global | JSON5 |
 | Hermes Agent | `~/.hermes/config.yaml` | global | YAML |
 
 > **Gotcha — global agents.** Antigravity, OpenClaw, and Hermes Agent share a single config across every project on the machine. `add` and `deploy` leave them unchecked by default; tick them only if you really want a host-wide change.
 >
-> **Agent ids for `-a` flag.** `claude-code`, `codex`, `cursor`, `gemini-cli`, `opencode`, `antigravity`, `openclaw`, `hermes-agent`.
+> **Agent ids for `-a` flag.** `claude-code`, `codex`, `cursor`, `gemini-cli`, `opencode`, `antigravity`, `openclaw`, `hermes-agent`, `kimi-code`.
 
 ## GitHub bundles (reverse-lookup)
 

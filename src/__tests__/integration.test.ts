@@ -7,6 +7,7 @@ import { claudeCodeAdapter } from "../adapters/claude-code.js";
 import { codexAdapter } from "../adapters/codex.js";
 import { geminiCliAdapter } from "../adapters/gemini-cli.js";
 import { opencodeAdapter } from "../adapters/opencode.js";
+import { kimiCodeAdapter } from "../adapters/kimi-code.js";
 import { resolveConfig } from "../utils/resolve-config.js";
 import { isGitHubRepo, isValidInput } from "../install/source.js";
 
@@ -93,6 +94,31 @@ describe("E2E: install -> deploy to agents -> list -> sync -> remove", () => {
 
     const codexConfig = resolveConfig(definitionWithOverrides, codexAdapter);
     expect(codexConfig.transport).toBe("stdio");
+  });
+
+  it("disables a server for one agent while leaving the others untouched", async () => {
+    const definition: ServerDefinition = {
+      name: "channel",
+      source: "https://example.com",
+      default: {
+        transport: "stdio",
+        command: "npx",
+        args: ["-y", "channel"],
+        env: {},
+      },
+      overrides: { "kimi-code": { enabled: false } },
+    };
+
+    for (const adapter of [claudeCodeAdapter, kimiCodeAdapter]) {
+      await adapter.write(tmpDir, definition.name, resolveConfig(definition, adapter));
+    }
+
+    const kimi = (await kimiCodeAdapter.read(tmpDir))["channel"];
+    expect(kimi).toHaveProperty("enabled", false);
+
+    // Claude Code has no enabled concept; the flag must not leak into its file.
+    const cc = (await claudeCodeAdapter.read(tmpDir))["channel"];
+    expect(cc).not.toHaveProperty("enabled");
   });
 
   it("detects conflicts and prevents double-write", async () => {

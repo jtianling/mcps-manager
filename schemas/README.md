@@ -96,8 +96,16 @@ mcpsmgr **never** executes manifest `prerequisites`.  They are printed verbatim 
 
 ## Supported `agents` keys
 
-`claude-code`, `codex`, `cursor`, `gemini-cli`, `opencode`, `antigravity`, `openclaw`.  Unknown keys cause manifest validation to fail.
+`claude-code`, `codex`, `cursor`, `gemini-cli`, `opencode`, `antigravity`, `openclaw`, `hermes-agent`, `kimi-code`.  Unknown keys cause manifest validation to fail.
 
 ## Supported `transport` values
 
 `stdio`, `http`, `streamable-http`, `sse`.  Internally mcpsmgr maps the three http variants to its `HttpConfig`; per-agent adapters serialize back to the agent-specific format on write.
+
+## `config.enabled`
+
+Optional boolean.  Declares a server entry that the agent should load but keep switched off.
+
+This exists for agents whose config layers merge *per server key* — Kimi Code reads `~/.kimi-code/mcp.json`, the project-root `.mcp.json` it shares with Claude Code, and the project-local `.kimi-code/mcp.json`, merging them by key.  There, simply omitting a server does not hide an entry inherited from an earlier layer; only a declared entry with `"enabled": false` masks it.  The typical case is a server that is useful to one agent but broken under another, such as a stdio side-channel that only Claude Code understands.
+
+Agents with no equivalent concept ignore the field and never write it into their config.

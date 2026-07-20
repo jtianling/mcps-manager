@@ -1,8 +1,12 @@
+// Agents whose config layers merge per server key (Kimi Code) need a declared
+// entry to mask an inherited one — omitting the server is not the same as
+// switching it off. Adapters without the concept ignore this field.
 export interface StdioConfig {
   readonly transport: "stdio";
   readonly command: string;
   readonly args: readonly string[];
   readonly env: Readonly<Record<string, string>>;
+  readonly enabled?: boolean;
 }
 
 export interface HttpConfig {
@@ -10,6 +14,7 @@ export interface HttpConfig {
   readonly url: string;
   readonly headers: Readonly<Record<string, string>>;
   readonly bearerTokenEnvVar?: string;
+  readonly enabled?: boolean;
 }
 
 export type DefaultConfig = StdioConfig | HttpConfig;
@@ -22,7 +27,8 @@ export type AgentId =
   | "opencode"
   | "antigravity"
   | "openclaw"
-  | "hermes-agent";
+  | "hermes-agent"
+  | "kimi-code";
 
 export interface ServerDefinition {
   readonly name: string;

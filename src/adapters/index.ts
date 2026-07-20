@@ -8,6 +8,7 @@ import { opencodeAdapter } from "./opencode.js";
 import { antigravityAdapter } from "./antigravity.js";
 import { openclawAdapter } from "./openclaw.js";
 import { hermesAdapter } from "./hermes.js";
+import { kimiCodeAdapter } from "./kimi-code.js";
 
 export const allAdapters: readonly AgentAdapter[] = [
   claudeCodeAdapter,
@@ -18,6 +19,7 @@ export const allAdapters: readonly AgentAdapter[] = [
   antigravityAdapter,
   openclawAdapter,
   hermesAdapter,
+  kimiCodeAdapter,
 ];
 
 export function getAdapter(id: AgentId): AgentAdapter {

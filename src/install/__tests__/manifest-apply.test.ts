@@ -417,3 +417,53 @@ describe("applyManifest bearerTokenEnvVar", () => {
     expect(stdio).not.toHaveProperty("bearerTokenEnvVar");
   });
 });
+
+describe("applyManifest enabled passthrough", () => {
+  const manifest: Manifest = {
+    schemaVersion: "1.0.0",
+    name: "demo",
+    agents: {
+      "kimi-code": {
+        servers: [
+          {
+            name: "demo",
+            config: { transport: "http", url: "http://127.0.0.1:9100/mcp" },
+          },
+          {
+            name: "demo-channel",
+            config: {
+              transport: "stdio",
+              command: "npx",
+              args: ["-y", "demo-channel"],
+              enabled: false,
+            },
+          },
+        ],
+      },
+    },
+  };
+
+  it("carries enabled:false onto the resolved config", () => {
+    const out = applyManifest({
+      manifest,
+      source: "owner/repo",
+      variableValues: {},
+      envValues: {},
+      agentIds: ["kimi-code"],
+    });
+    expect(out.perAgent["kimi-code"]![1]!.default).toMatchObject({
+      enabled: false,
+    });
+  });
+
+  it("leaves enabled absent when the manifest does not declare it", () => {
+    const out = applyManifest({
+      manifest,
+      source: "owner/repo",
+      variableValues: {},
+      envValues: {},
+      agentIds: ["kimi-code"],
+    });
+    expect(out.perAgent["kimi-code"]![0]!.default).not.toHaveProperty("enabled");
+  });
+});

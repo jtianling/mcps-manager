@@ -100,13 +100,14 @@ mcpsmgr update [name]         # 重新分析源文档, 更新中央定义
 | Cursor | `.cursor/mcp.json` | 项目 | JSON |
 | Gemini CLI | `.gemini/settings.json` | 项目 | JSON |
 | OpenCode | `opencode.json` | 项目 | JSON |
+| Kimi Code | `.kimi-code/mcp.json` | 项目 | JSON |
 | Antigravity | `~/.gemini/antigravity/mcp_config.json` | 全局 | JSON |
 | OpenClaw | `~/.openclaw/openclaw.json` | 全局 | JSON5 |
 | Hermes Agent | `~/.hermes/config.yaml` | 全局 | YAML |
 
 > **坑 —— 全局 agent.** Antigravity, OpenClaw, Hermes Agent 在整台机器上共用同一份配置. `add` 和 `deploy` 默认不勾选这三个, 真要改全局再手动勾.
 >
-> **`-a` 可用的 agent id:** `claude-code`, `codex`, `cursor`, `gemini-cli`, `opencode`, `antigravity`, `openclaw`, `hermes-agent`.
+> **`-a` 可用的 agent id:** `claude-code`, `codex`, `cursor`, `gemini-cli`, `opencode`, `antigravity`, `openclaw`, `hermes-agent`, `kimi-code`.
 
 ## GitHub bundle (反查)
 

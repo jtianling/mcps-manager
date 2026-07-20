@@ -34,12 +34,14 @@ export interface ManifestStdioServerConfig {
   readonly command: string;
   readonly args?: readonly string[];
   readonly env?: Readonly<Record<string, string>>;
+  readonly enabled?: boolean;
 }
 
 export interface ManifestHttpServerConfig {
   readonly transport: "http" | "streamable-http" | "sse";
   readonly url: string;
   readonly headers?: Readonly<Record<string, string>>;
+  readonly enabled?: boolean;
 }
 
 export type ManifestServerConfig =
@@ -86,6 +88,7 @@ const KNOWN_AGENT_IDS: readonly AgentId[] = [
   "antigravity",
   "openclaw",
   "hermes-agent",
+  "kimi-code",
 ];
 
 const VALID_TRANSPORTS: readonly ManifestTransport[] = [
@@ -202,6 +205,9 @@ function validateServerEntry(
       `unsupported transport '${transport}' in ${path}; expected stdio | http | streamable-http | sse`,
     );
     return;
+  }
+  if (cfgObj["enabled"] !== undefined && typeof cfgObj["enabled"] !== "boolean") {
+    errors.push(`${path}.config.enabled must be a boolean`);
   }
   if (transport === "stdio") {
     if (typeof cfgObj["command"] !== "string" || cfgObj["command"] === "") {
